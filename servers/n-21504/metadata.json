@@ -1,0 +1,14 @@
+{
+  "id": "n-21504",
+  "name": "n",
+  "version": "1.21.11",
+  "type": "vanilla",
+  "path": "C:\\Users\\temit\\Desktop\\Mace\\servers\\n-21504",
+  "status": "installing",
+  "javaPath": "C:\\Program Files\\Java\\jdk-21.0.10\\bin\\java.exe",
+  "memoryMB": 2048,
+  "world": "world",
+  "ipAddress": "127.0.0.1",
+  "port": 25568,
+  "watchdog": false
+}
