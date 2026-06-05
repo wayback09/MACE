@@ -417,3 +417,7 @@ func GetAvailableVersions() (map[string][]string, error) {
 	return results, nil
 }
 
+// GetServerResources returns live resource usage for a running server.
+func GetServerResources(id string) (*launcher.ResourceUsage, error) {
+	return launcher.GetResourceUsage(id)
+}

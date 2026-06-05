@@ -15,6 +15,8 @@ export function GetConsoleLogs(arg1:string):Promise<Array<string>>;
 
 export function GetServerProperties(arg1:string):Promise<string>;
 
+export function GetServerResources(arg1:string):Promise<Record<string, any>>;
+
 export function ListServers():Promise<Array<servermanager.ServerInstance>>;
 
 export function RestartServer(arg1:string):Promise<void>;
