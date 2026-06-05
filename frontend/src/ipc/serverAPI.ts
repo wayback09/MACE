@@ -31,6 +31,7 @@ declare global {
           }): Promise<void>;
           DetectJava(): Promise<JavaInstall[]>;
           GetAvailableVersions(): Promise<Record<string, string[]>>;
+          GetServerResources(id: string): Promise<{ cpuPercent: number; memoryMB: number; uptime: number }>;
           SubscribeConsole(id: string): Promise<void>;
           UnsubscribeConsole(id: string): Promise<void>;
         };
@@ -108,6 +109,10 @@ export async function detectJava(): Promise<JavaInstall[]> {
 
 export async function getAvailableVersions(): Promise<Record<string, string[]>> {
   return window.go.main.App.GetAvailableVersions();
+}
+
+export async function getServerResources(id: string): Promise<{ cpuPercent: number; memoryMB: number; uptime: number }> {
+  return window.go.main.App.GetServerResources(id);
 }
 
 // Console subscription helpers using Wails events

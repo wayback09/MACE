@@ -127,6 +127,19 @@ func (a *App) GetAvailableVersions() (map[string][]string, error) {
 	return servermanager.GetAvailableVersions()
 }
 
+// GetServerResources returns live CPU/memory/uptime for a running server process.
+func (a *App) GetServerResources(id string) (map[string]interface{}, error) {
+	usage, err := servermanager.GetServerResources(id)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{
+		"cpuPercent": usage.CPUPercent,
+		"memoryMB":   usage.MemoryMB,
+		"uptime":     usage.Uptime,
+	}, nil
+}
+
 // SubscribeConsole starts streaming logs for a server instance.
 func (a *App) SubscribeConsole(id string) {
 	a.mu.Lock()

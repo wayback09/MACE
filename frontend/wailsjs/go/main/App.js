@@ -26,6 +26,10 @@ export function GetServerProperties(arg1) {
   return window['go']['main']['App']['GetServerProperties'](arg1);
 }
 
+export function GetServerResources(arg1) {
+  return window['go']['main']['App']['GetServerResources'](arg1);
+}
+
 export function ListServers() {
   return window['go']['main']['App']['ListServers']();
 }

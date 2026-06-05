@@ -3,6 +3,7 @@ import type { ServerInstance } from "../ipc/types";
 import { Terminal, Settings, Trash2, Cpu, FolderClosed } from "lucide-react";
 import Console from "../components/Console";
 import ConfigEditor from "../components/ConfigEditor";
+import ResourceMonitor from "../components/ResourceMonitor";
 import { deleteServer, startServer, stopServer, restartServer } from "../ipc/serverAPI";
 
 interface InstancesProps {
@@ -225,6 +226,13 @@ export default function Instances({ servers, refreshServers, initialSelectedId, 
               </button>
             </div>
           </div>
+
+          {/* Resource Monitor - only visible when server is running */}
+          <ResourceMonitor
+            serverId={selectedServer.id}
+            serverStatus={selectedServer.status}
+            allocatedMemoryMB={selectedServer.memoryMB}
+          />
 
           {/* Tab Content */}
           {activeTab === "terminal" ? (

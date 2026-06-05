@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 )
 
 var (
@@ -157,6 +158,7 @@ func StartServer(id string, dir string, javaPath string, memoryMB int, watchdogE
 	}
 
 	processes[id] = cmd
+	startTimes[id] = time.Now()
 
 	// Start Watchdog monitor
 	go RunWatchdog(id, cmd, dir, javaPath, memoryMB, watchdogEnabled, statusCallback)
@@ -204,6 +206,7 @@ func KillServer(id string) (string, error) {
 func DeregisterProcess(id string) {
 	processesMu.Lock()
 	delete(processes, id)
+	delete(startTimes, id)
 	processesMu.Unlock()
 	UnregisterStdin(id)
 }
