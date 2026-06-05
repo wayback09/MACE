@@ -59,9 +59,8 @@ export default function App() {
       {/* Sidebar Navigation */}
       <aside
         style={{
-          background: "var(--bg-sidebar)",
-          borderRight: "1px solid var(--border-glass)",
-          backdropFilter: "blur(20px)",
+          background: "var(--secondary-color)",
+          borderRight: "4px solid var(--hr-top-color)",
           display: "flex",
           flexDirection: "column",
           padding: "2rem 1.5rem",
@@ -74,14 +73,14 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <div
               style={{
-                background: "linear-gradient(135deg, var(--primary), var(--success))",
+                background: "var(--btn-primary-inner-color)",
                 width: "40px",
                 height: "40px",
-                borderRadius: "10px",
+                border: "2px solid var(--btn-primary-border-color)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: "0 4px 15px rgba(99, 102, 241, 0.4)",
+                boxShadow: "inset 2px 2px 0 var(--btn-primary-inner-border-lt-color), inset -2px -2px 0 var(--btn-primary-inner-border-br-color)",
               }}
             >
               <Cpu size={22} color="white" />
@@ -90,8 +89,8 @@ export default function App() {
               <h2 style={{ fontSize: "1.25rem", fontWeight: 700, letterSpacing: "0.5px" }}>
                 MACE
               </h2>
-              <span style={{ fontSize: "0.7rem", color: "var(--success)", fontWeight: 500, display: "flex", alignItems: "center", gap: "4px" }}>
-                <span style={{ display: "inline-block", width: "6px", height: "6px", borderRadius: "50%", background: "var(--success)" }} className="status-pulse-online"></span>
+              <span style={{ fontSize: "0.7rem", color: "var(--success-color)", fontWeight: 500, display: "flex", alignItems: "center", gap: "4px" }}>
+                <span style={{ display: "inline-block", width: "6px", height: "6px", background: "var(--success-color)" }}></span>
                 Engine Ready
               </span>
             </div>
@@ -101,21 +100,8 @@ export default function App() {
           <nav style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             <button
               onClick={() => setActiveTab("dashboard")}
-              className="btn-tab"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "1rem",
-                width: "100%",
-                padding: "0.75rem 1rem",
-                border: "none",
-                borderRadius: "10px",
-                background: activeTab === "dashboard" ? "var(--primary)" : "transparent",
-                color: activeTab === "dashboard" ? "white" : "var(--text-muted)",
-                textAlign: "left",
-                fontWeight: 500,
-                boxShadow: activeTab === "dashboard" ? "0 4px 12px var(--primary-glow)" : "none",
-              }}
+              className={activeTab === "dashboard" ? "button-primary" : "button-normal"}
+              style={{ width: "100%", justifyContent: "flex-start", gap: "1rem", padding: "0.75rem 1rem", margin: 0 }}
             >
               <LayoutDashboard size={18} />
               Dashboard
@@ -123,21 +109,8 @@ export default function App() {
 
             <button
               onClick={() => setActiveTab("instances")}
-              className="btn-tab"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "1rem",
-                width: "100%",
-                padding: "0.75rem 1rem",
-                border: "none",
-                borderRadius: "10px",
-                background: activeTab === "instances" ? "var(--primary)" : "transparent",
-                color: activeTab === "instances" ? "white" : "var(--text-muted)",
-                textAlign: "left",
-                fontWeight: 500,
-                boxShadow: activeTab === "instances" ? "0 4px 12px var(--primary-glow)" : "none",
-              }}
+              className={activeTab === "instances" ? "button-primary" : "button-normal"}
+              style={{ width: "100%", justifyContent: "flex-start", gap: "1rem", padding: "0.75rem 1rem", margin: 0 }}
             >
               <Server size={18} />
               Instances
@@ -145,10 +118,9 @@ export default function App() {
                 <span
                   style={{
                     marginLeft: "auto",
-                    background: "rgba(255, 255, 255, 0.15)",
+                    background: "var(--primary-color)",
                     fontSize: "0.75rem",
                     padding: "2px 8px",
-                    borderRadius: "20px",
                     color: "white",
                   }}
                 >
@@ -159,21 +131,8 @@ export default function App() {
 
             <button
               onClick={() => setActiveTab("create")}
-              className="btn-tab"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "1rem",
-                width: "100%",
-                padding: "0.75rem 1rem",
-                border: "none",
-                borderRadius: "10px",
-                background: activeTab === "create" ? "var(--primary)" : "transparent",
-                color: activeTab === "create" ? "white" : "var(--text-muted)",
-                textAlign: "left",
-                fontWeight: 500,
-                boxShadow: activeTab === "create" ? "0 4px 12px var(--primary-glow)" : "none",
-              }}
+              className={activeTab === "create" ? "button-primary" : "button-normal"}
+              style={{ width: "100%", justifyContent: "flex-start", gap: "1rem", padding: "0.75rem 1rem", margin: 0 }}
             >
               <PlusCircle size={18} />
               New Instance
@@ -181,21 +140,8 @@ export default function App() {
 
             <button
               onClick={() => setActiveTab("settings")}
-              className="btn-tab"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "1rem",
-                width: "100%",
-                padding: "0.75rem 1rem",
-                border: "none",
-                borderRadius: "10px",
-                background: activeTab === "settings" ? "var(--primary)" : "transparent",
-                color: activeTab === "settings" ? "white" : "var(--text-muted)",
-                textAlign: "left",
-                fontWeight: 500,
-                boxShadow: activeTab === "settings" ? "0 4px 12px var(--primary-glow)" : "none",
-              }}
+              className={activeTab === "settings" ? "button-primary" : "button-normal"}
+              style={{ width: "100%", justifyContent: "flex-start", gap: "1rem", padding: "0.75rem 1rem", margin: 0 }}
             >
               <SettingsIcon size={18} />
               Settings
@@ -205,21 +151,21 @@ export default function App() {
 
         {/* Java Status Footer */}
         <div
-          className="glass-panel"
+          className="card"
           style={{
             padding: "1rem",
             display: "flex",
             flexDirection: "column",
             gap: "0.5rem",
             fontSize: "0.8rem",
-            background: "rgba(0, 0, 0, 0.2)",
+            background: "var(--primary-color)",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <Database size={14} color={javaDetected ? "var(--success)" : "var(--danger)"} />
-            <span style={{ fontWeight: 500 }}>Java Status</span>
+            <Database size={14} color={javaDetected ? "var(--success-color)" : "var(--error-color)"} />
+            <span style={{ fontWeight: 700 }}>Java Status</span>
           </div>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>
+          <p style={{ color: "var(--accent-color)", fontSize: "0.75rem", margin: 0 }}>
             {javaDetected ? "Auto-detected JDK on PATH" : "No JDK found! Set path in Settings."}
           </p>
         </div>
@@ -232,16 +178,15 @@ export default function App() {
             <div style={{ textAlign: "center" }}>
               <div
                 style={{
-                  border: "3px solid var(--border-glass)",
-                  borderTop: "3px solid var(--primary)",
-                  borderRadius: "50%",
+                  border: "4px solid var(--hr-bottom-color)",
+                  borderTop: "4px solid var(--btn-primary-inner-color)",
                   width: "40px",
                   height: "40px",
                   animation: "spin 1s linear infinite",
                   margin: "0 auto 1rem",
                 }}
               />
-              <p style={{ color: "var(--text-muted)" }}>Connecting to control engine...</p>
+              <p style={{ color: "var(--accent-color)" }}>Connecting to control engine...</p>
             </div>
             <style>{`
               @keyframes spin {

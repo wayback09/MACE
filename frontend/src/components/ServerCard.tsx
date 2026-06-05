@@ -40,27 +40,20 @@ export default function ServerCard({ server, refreshServers, onManage }: ServerC
 
   const getStatusColor = () => {
     switch (server.status) {
-      case "online":
-        return "var(--success)";
+      case "online":      return "var(--success-color)";
       case "starting":
-      case "restarting":
-        return "var(--warning)";
-      case "stopping":
-        return "var(--danger)";
-      case "installing":
-        return "var(--primary)";
-      default:
-        return "var(--text-muted)";
+      case "restarting":  return "var(--warning-color)";
+      case "stopping":    return "var(--error-color)";
+      case "installing":  return "var(--btn-primary-inner-color)";
+      default:            return "var(--accent-color)";
     }
   };
 
-  const getStatusLabel = () => {
-    return server.status.charAt(0).toUpperCase() + server.status.slice(1);
-  };
+  const getStatusLabel = () => server.status.charAt(0).toUpperCase() + server.status.slice(1);
 
   return (
     <div
-      className="glass-panel"
+      className="card"
       style={{
         padding: "1.5rem",
         display: "flex",
@@ -70,7 +63,7 @@ export default function ServerCard({ server, refreshServers, onManage }: ServerC
         overflow: "hidden",
       }}
     >
-      {/* Background tint reflecting status */}
+      {/* Status side stripe */}
       <div
         style={{
           position: "absolute",
@@ -85,15 +78,15 @@ export default function ServerCard({ server, refreshServers, onManage }: ServerC
       {/* Header Info */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <h3 style={{ fontSize: "1.15rem", fontWeight: 600, marginBottom: "0.25rem" }}>{server.name}</h3>
+          <h3 style={{ fontSize: "1.15rem", fontWeight: 700, marginBottom: "0.25rem" }}>{server.name}</h3>
           <span
             style={{
               fontSize: "0.75rem",
-              background: "rgba(255, 255, 255, 0.05)",
+              background: "var(--primary-color)",
               padding: "2px 8px",
-              borderRadius: "4px",
-              color: "var(--text-muted)",
+              color: "var(--accent-color)",
               textTransform: "capitalize",
+              border: "1px solid var(--hr-top-color)",
             }}
           >
             {server.type} • {server.version}
@@ -107,18 +100,10 @@ export default function ServerCard({ server, refreshServers, onManage }: ServerC
               display: "inline-block",
               width: "8px",
               height: "8px",
-              borderRadius: "50%",
               background: getStatusColor(),
             }}
-            className={
-              server.status === "online"
-                ? "status-pulse-online"
-                : server.status === "starting" || server.status === "restarting" || server.status === "installing"
-                ? "status-pulse-starting"
-                : ""
-            }
           />
-          <span style={{ fontSize: "0.8rem", fontWeight: 500, color: getStatusColor() }}>
+          <span style={{ fontSize: "0.8rem", fontWeight: 600, color: getStatusColor() }}>
             {getStatusLabel()}
           </span>
         </div>
@@ -131,44 +116,42 @@ export default function ServerCard({ server, refreshServers, onManage }: ServerC
           gridTemplateColumns: "1fr 1fr",
           gap: "1rem",
           padding: "0.75rem",
-          borderRadius: "8px",
-          background: "rgba(0, 0, 0, 0.15)",
+          background: "var(--primary-color)",
+          border: "1px solid var(--hr-top-color)",
           fontSize: "0.85rem",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <Cpu size={14} className="text-muted" style={{ color: "var(--text-muted)" }} />
+          <Cpu size={14} style={{ color: "var(--accent-color)" }} />
           <div>
-            <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Memory</div>
-            <div style={{ fontWeight: 500 }}>{server.memoryMB} MB</div>
+            <div style={{ fontSize: "0.7rem", color: "var(--accent-color)" }}>Memory</div>
+            <div style={{ fontWeight: 600 }}>{server.memoryMB} MB</div>
           </div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <HardDrive size={14} className="text-muted" style={{ color: "var(--text-muted)" }} />
+          <HardDrive size={14} style={{ color: "var(--accent-color)" }} />
           <div>
-            <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Connection</div>
-            <div style={{ fontWeight: 500 }}>Port {server.port}</div>
+            <div style={{ fontSize: "0.7rem", color: "var(--accent-color)" }}>Connection</div>
+            <div style={{ fontWeight: 600 }}>Port {server.port}</div>
           </div>
         </div>
       </div>
 
       {/* Action Row */}
       <div style={{ display: "flex", gap: "0.75rem", marginTop: "auto" }}>
-        {/* Toggle Start/Stop */}
         {server.status === "offline" ? (
           <button
             onClick={handleStart}
             disabled={actionLoading}
-            className="btn-primary"
+            className="button-primary"
             style={{
               flex: 1,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               gap: "0.5rem",
-              background: "var(--success)",
-              boxShadow: "0 4px 10px var(--success-glow)",
+              margin: 0,
               opacity: actionLoading ? 0.6 : 1,
             }}
           >
@@ -178,36 +161,40 @@ export default function ServerCard({ server, refreshServers, onManage }: ServerC
           <button
             onClick={handleStop}
             disabled={actionLoading || server.status === "stopping" || server.status === "installing"}
-            className="btn-primary"
+            className="button-primary"
             style={{
               flex: 1,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               gap: "0.5rem",
-              background: "var(--danger)",
-              boxShadow: "0 4px 10px var(--danger-glow)",
+              margin: 0,
+              background: "var(--error-color)",
               opacity: actionLoading || server.status === "stopping" ? 0.6 : 1,
-            }}
+              "--btn-primary-inner-color": "var(--error-color)",
+              "--btn-primary-inner-hover-color": "#b91c1c",
+              "--btn-primary-inner-shadow-color": "#991b1b",
+            } as React.CSSProperties}
           >
             {actionLoading || server.status === "stopping" ? (
-              <RefreshCw size={16} className="status-pulse-starting" />
+              <RefreshCw size={16} />
             ) : (
               <Square size={16} />
             )}
-            {server.status === "stopping" ? "Stopping" : "Stop"}
+            {server.status === "stopping" ? "Stopping..." : "Stop"}
           </button>
         )}
 
-        {/* Manage Button */}
+        {/* Manage / Console button */}
         <button
           onClick={onManage}
-          className="btn-secondary"
+          className="button-normal"
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: "0.6rem",
+            padding: "0.6rem 0.8rem",
+            margin: 0,
           }}
           title="Open Console & Settings"
         >

@@ -22,17 +22,15 @@ export default function CreateServer({ refreshServers, setActiveTab }: CreateSer
       try {
         const data = await getAvailableVersions();
         setVersionsMap(data);
-        if (data.vanilla && data.vanilla.length > 0) {
-          setVersion(data.vanilla[0]);
-        }
-      } catch (err: any) {
+        if (data.vanilla && data.vanilla.length > 0) setVersion(data.vanilla[0]);
+      } catch {
         setError("Failed to fetch server versions. Using offline fallback.");
         const fallback = {
-          vanilla: ["1.20.4", "1.20.2", "1.20.1", "1.19.4", "1.19.2", "1.18.2", "1.17.1", "1.16.5", "1.12.2"],
-          paper: ["1.20.4", "1.20.2", "1.20.1", "1.19.4", "1.19.2", "1.18.2", "1.17.1", "1.16.5", "1.12.2"],
-          fabric: ["1.20.4", "1.20.2", "1.20.1", "1.19.4", "1.19.2", "1.18.2", "1.17.1", "1.16.5"],
-          quilt: ["1.20.4", "1.20.2", "1.20.1", "1.19.4", "1.19.2", "1.18.2"],
-          forge: ["1.20.4", "1.20.2", "1.20.1", "1.19.4", "1.19.2", "1.18.2", "1.17.1", "1.16.5", "1.12.2"],
+          vanilla: ["1.20.4","1.20.2","1.20.1","1.19.4","1.19.2","1.18.2","1.17.1","1.16.5","1.12.2"],
+          paper:   ["1.20.4","1.20.2","1.20.1","1.19.4","1.19.2","1.18.2","1.17.1","1.16.5","1.12.2"],
+          fabric:  ["1.20.4","1.20.2","1.20.1","1.19.4","1.19.2","1.18.2","1.17.1","1.16.5"],
+          quilt:   ["1.20.4","1.20.2","1.20.1","1.19.4","1.19.2","1.18.2"],
+          forge:   ["1.20.4","1.20.2","1.20.1","1.19.4","1.19.2","1.18.2","1.17.1","1.16.5","1.12.2"],
         };
         setVersionsMap(fallback);
         setVersion("1.20.4");
@@ -46,25 +44,16 @@ export default function CreateServer({ refreshServers, setActiveTab }: CreateSer
   const handleTypeChange = (newType: string) => {
     setType(newType);
     const available = versionsMap[newType];
-    if (available && available.length > 0) {
-      setVersion(available[0]);
-    }
+    if (available && available.length > 0) setVersion(available[0]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-
     setLoading(true);
     setError("");
-
     try {
-      await createServer({
-        name,
-        type,
-        version,
-        memoryMB: Number(memoryMB),
-      });
+      await createServer({ name, type, version, memoryMB: Number(memoryMB) });
       refreshServers();
       setActiveTab("instances");
     } catch (err: any) {
@@ -79,13 +68,13 @@ export default function CreateServer({ refreshServers, setActiveTab }: CreateSer
       {/* Title */}
       <div>
         <h1 style={{ fontSize: "2rem", fontWeight: 700, marginBottom: "0.5rem" }}>New Server Instance</h1>
-        <p style={{ color: "var(--text-muted)" }}>Download and set up a Minecraft server in a single click.</p>
+        <p style={{ color: "var(--accent-color)", margin: 0 }}>Download and set up a Minecraft server in a single click.</p>
       </div>
 
       {loading ? (
-        /* Loading installation state */
+        /* Installing state */
         <div
-          className="glass-panel"
+          className="card"
           style={{
             padding: "4rem 2rem",
             textAlign: "center",
@@ -97,35 +86,32 @@ export default function CreateServer({ refreshServers, setActiveTab }: CreateSer
         >
           <div
             style={{
-              border: "4px solid var(--border-glass)",
-              borderTop: "4px solid var(--primary)",
-              borderRadius: "50%",
+              border: "4px solid var(--hr-bottom-color)",
+              borderTop: "4px solid var(--btn-primary-inner-color)",
               width: "60px",
               height: "60px",
               animation: "spin 1s linear infinite",
             }}
           />
+          <style>{`@keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }`}</style>
           <div>
-            <h3 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: "0.5rem" }}>
-              Downloading Server Jars
-            </h3>
-            <p style={{ color: "var(--text-muted)", maxWidth: "420px", margin: "0 auto", fontSize: "0.9rem" }}>
+            <h3 style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "0.5rem" }}>Downloading Server Jars</h3>
+            <p style={{ color: "var(--accent-color)", maxWidth: "420px", margin: "0 auto", fontSize: "0.9rem" }}>
               Downloading the Minecraft server engine, setting up config files, and preparing folders. This can take up to a minute.
             </p>
           </div>
         </div>
       ) : (
-        /* Form Wizard */
-        <form onSubmit={handleSubmit} className="glass-panel" style={{ padding: "2rem", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          
+        /* Form */
+        <form onSubmit={handleSubmit} className="card" style={{ padding: "2rem", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+
           {error && (
             <div
               style={{
-                background: "var(--danger-glow)",
-                border: "1px solid var(--danger)",
+                background: "rgba(220, 53, 69, 0.15)",
+                border: "3px solid var(--error-color)",
                 padding: "1rem",
-                borderRadius: "8px",
-                color: "var(--text-main)",
+                color: "var(--text-color)",
                 fontSize: "0.9rem",
                 display: "flex",
                 alignItems: "center",
@@ -137,12 +123,11 @@ export default function CreateServer({ refreshServers, setActiveTab }: CreateSer
             </div>
           )}
 
-          {/* Name */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <label style={{ fontSize: "0.9rem", fontWeight: 500, color: "var(--text-muted)" }}>
-              Server Name
-            </label>
+          {/* Server Name */}
+          <div className="form-group">
+            <label className="form-label">Server Name</label>
             <input
+              className="form-input"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -153,26 +138,21 @@ export default function CreateServer({ refreshServers, setActiveTab }: CreateSer
           </div>
 
           {/* Engine Type */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <label style={{ fontSize: "0.9rem", fontWeight: 500, color: "var(--text-muted)" }}>
-              Server Engine Type
-            </label>
+          <div className="form-group">
+            <label className="form-label">Server Engine Type</label>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: "0.75rem" }}>
               {["vanilla", "paper", "fabric", "quilt", "forge"].map((t) => (
                 <button
                   key={t}
                   type="button"
                   onClick={() => handleTypeChange(t)}
+                  className={type === t ? "button-primary" : "button-normal"}
                   style={{
-                    background: type === t ? "var(--primary-glow)" : "rgba(255, 255, 255, 0.02)",
-                    border: `1px solid ${type === t ? "var(--primary)" : "var(--border-glass)"}`,
-                    borderRadius: "8px",
-                    color: type === t ? "white" : "var(--text-muted)",
+                    margin: 0,
                     padding: "0.75rem",
-                    fontWeight: 600,
+                    fontWeight: 700,
                     textTransform: "capitalize",
                     fontSize: "0.85rem",
-                    transition: "all var(--transition-fast)",
                   }}
                 >
                   {t}
@@ -183,28 +163,29 @@ export default function CreateServer({ refreshServers, setActiveTab }: CreateSer
 
           {/* Version and RAM */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              <label style={{ fontSize: "0.9rem", fontWeight: 500, color: "var(--text-muted)" }}>
-                Minecraft Version
-              </label>
-              <select value={version} onChange={(e) => setVersion(e.target.value)} disabled={fetchingVersions}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">Minecraft Version</label>
+              <select
+                className="form-input"
+                value={version}
+                onChange={(e) => setVersion(e.target.value)}
+                disabled={fetchingVersions}
+                style={{ height: "40px" }}
+              >
                 {fetchingVersions ? (
                   <option>Loading versions...</option>
                 ) : (
                   (versionsMap[type] || []).map((v) => (
-                    <option key={v} value={v}>
-                      {v}
-                    </option>
+                    <option key={v} value={v}>{v}</option>
                   ))
                 )}
               </select>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              <label style={{ fontSize: "0.9rem", fontWeight: 500, color: "var(--text-muted)" }}>
-                Memory Limit (MB)
-              </label>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">Memory Limit (MB)</label>
               <input
+                className="form-input"
                 type="number"
                 value={memoryMB}
                 onChange={(e) => setMemoryMB(Number(e.target.value))}
@@ -215,17 +196,17 @@ export default function CreateServer({ refreshServers, setActiveTab }: CreateSer
             </div>
           </div>
 
-          {/* RAM Recommendation Hint */}
+          {/* RAM Hint */}
           <div
             style={{
               padding: "0.75rem 1rem",
-              borderRadius: "8px",
-              background: "rgba(0, 0, 0, 0.2)",
+              background: "var(--primary-color)",
+              border: "2px solid var(--hr-top-color)",
               fontSize: "0.8rem",
               display: "flex",
               alignItems: "center",
               gap: "0.5rem",
-              color: "var(--text-muted)",
+              color: "var(--accent-color)",
             }}
           >
             <Cpu size={14} />
@@ -235,15 +216,8 @@ export default function CreateServer({ refreshServers, setActiveTab }: CreateSer
           {/* Submit */}
           <button
             type="submit"
-            className="btn-primary"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "0.5rem",
-              padding: "0.75rem",
-              marginTop: "0.5rem",
-            }}
+            className="button-primary"
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", padding: "0.75rem", margin: 0 }}
           >
             <Download size={16} /> Download and Create Server
           </button>

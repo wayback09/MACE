@@ -1,38 +1,45 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
-
+/* ===== MACE Dark Theme Overrides ===== */
+/* Override the Minecraft-CSS framework defaults with much darker values */
 :root {
-  --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'Space Grotesk', 'Fira Code', monospace;
-  
-  /* Color Palette */
-  --bg-main: #0a0b10;
-  --bg-sidebar: rgba(13, 14, 21, 0.85);
-  --bg-card: rgba(20, 22, 33, 0.65);
-  --bg-glass: rgba(255, 255, 255, 0.03);
-  --border-glass: rgba(255, 255, 255, 0.07);
-  --border-glass-focus: rgba(255, 255, 255, 0.15);
-  
-  --primary: #6366f1;       /* Indigo Glow */
-  --primary-light: #818cf8;
-  --primary-glow: rgba(99, 102, 241, 0.25);
-  
-  --success: #10b981;       /* Emerald */
-  --success-glow: rgba(16, 185, 129, 0.2);
-  
-  --warning: #f59e0b;       /* Amber */
-  --warning-glow: rgba(245, 158, 11, 0.2);
-  
-  --danger: #ef4444;        /* Rose Red */
-  --danger-glow: rgba(239, 68, 68, 0.2);
-  
-  --text-main: #f3f4f6;
-  --text-muted: #9ca3af;
-  --text-dark: #4b5563;
-  
-  --transition-fast: 0.15s ease;
-  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.15);
+  --primary-color: #1a1b1e;
+  --secondary-color: #222326;
+  --accent-color: #b0b1b4;
+  --background-color: #111214;
+  --text-color: #e8e8ea;
+  --selected-color: #2a2b2e;
+
+  --hr-top-color: #2a2b2e;
+  --hr-bottom-color: #3a3b3e;
+
+  /* Keep greens vibrant for buttons */
+  --btn-primary-inner-color: #3c8527;
+  --btn-primary-inner-hover-color: #2a641c;
+  --btn-primary-inner-shadow-color: #1d4d13;
+  --btn-primary-border-color: #0e0e0f;
+
+  /* Normal buttons - darker grey */
+  --btn-normal-inner-color: #2e2f32;
+  --btn-normal-border-color: #0e0e0f;
+  --btn-normal-inner-border-lt-color: #4a4b4ebf;
+  --btn-normal-inner-border-br-color: #1a1a1c;
+  --btn-normal-text-color: #c0c0c2;
+
+  --btn-normal-inner-hover-color: #218306;
+  --btn-normal-border-hover-color: #4a9a32;
+  --btn-normal-inner-border-lt-hover-color: #17cd07bf;
+  --btn-normal-inner-border-br-hover-color: #004e00;
+  --btn-normal-text-hover-color: #fff;
+
+  /* Tertiary - darker */
+  --btn-tertiary-inner-color: #3a3b3e;
+  --btn-tertiary-inner-hover-color: #4a4b4e;
+  --btn-tertiary-inner-shadow-color: #1a1a1c;
+  --btn-tertiary-text-color: #c8c8ca;
+
+  /* Secondary (purple) - keep but darken slightly */
+  --btn-secondary-inner-color: #5a35b5;
+  --btn-secondary-inner-hover-color: #4d2ca6;
+  --btn-secondary-inner-shadow-color: #3a1c8c;
 }
 
 /* Global Reset */
@@ -43,147 +50,102 @@
 }
 
 body {
-  font-family: var(--font-sans);
-  background-color: var(--bg-main);
-  color: var(--text-main);
+  font-family: MinecraftRegular, sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
   overflow-x: hidden;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.1) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.05) 0px, transparent 50%);
-  background-attachment: fixed;
 }
 
-/* Custom Scrollbar */
+/* Custom Scrollbar - dark */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
+  background: #0a0b0d;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-glass-focus);
-  border-radius: 10px;
+  background: #2e2f32;
+  border: 1px solid #0e0e0f;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--primary);
+  background: var(--btn-primary-inner-color);
 }
 
-/* Utility Animations */
-@keyframes pulse-glow {
-  0%, 100% {
-    opacity: 0.6;
-    box-shadow: 0 0 15px rgba(99, 102, 241, 0.1);
-  }
-  50% {
-    opacity: 1;
-    box-shadow: 0 0 25px rgba(99, 102, 241, 0.35);
-  }
-}
-
-.status-pulse-online {
-  box-shadow: 0 0 8px var(--success);
-  animation: pulse-online 2s infinite;
-}
-
-@keyframes pulse-online {
-  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-}
-
-.status-pulse-starting {
-  animation: pulse-starting 1.5s infinite;
-}
-
-@keyframes pulse-starting {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
-}
-
-/* Glassmorphism Panel helper */
-.glass-panel {
-  background: var(--bg-card);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-glass);
-  border-radius: 16px;
-  box-shadow: var(--shadow-lg);
-  transition: border-color var(--transition-normal), transform var(--transition-normal);
-}
-
-.glass-panel:hover {
-  border-color: var(--border-glass-focus);
-}
-
-/* UI Layout Styling */
+/* App Layout */
 .app-container {
   display: grid;
   grid-template-columns: 260px 1fr;
   min-height: 100vh;
 }
 
-/* Interactive Components */
+/* Override card to be darker */
+.card {
+  background-color: #1a1b1e !important;
+  border: 2px solid #2a2b2e !important;
+}
+
+/* Override form-input to be darker */
+.form-input {
+  background-color: #111214 !important;
+  border: 2px solid #2a2b2e !important;
+  box-shadow: inset 0 4px #0a0b0d !important;
+  color: #e8e8ea !important;
+}
+
+.form-input:focus {
+  border-color: var(--btn-primary-inner-color) !important;
+}
+
+/* Override select elements */
+select.form-input {
+  background-color: #111214 !important;
+  appearance: auto;
+}
+
+/* Remove default browser button styles */
 button {
-  font-family: var(--font-sans);
+  background: none;
+  border: none;
+  font-family: inherit;
   cursor: pointer;
-  outline: none;
-  transition: all var(--transition-fast);
 }
 
-.btn-primary {
-  background: var(--primary);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 0.6rem 1.2rem;
-  border-radius: 8px;
-  font-weight: 500;
-  box-shadow: 0 4px 10px var(--primary-glow);
+/* Consistent button sizing for action rows */
+.mc-action-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
 }
 
-.btn-primary:hover {
-  background: var(--primary-light);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 15px var(--primary-glow);
+.mc-action-row > button {
+  min-height: 36px;
+  padding: 0.4rem 0.75rem !important;
+  margin: 0 !important;
+  font-size: 0.8rem !important;
 }
 
-.btn-primary:active {
-  transform: translateY(0);
+/* Stat cards consistent height */
+.mc-stat-card {
+  min-height: 90px;
 }
 
-.btn-secondary {
-  background: var(--bg-glass);
-  color: var(--text-main);
-  border: 1px solid var(--border-glass);
-  padding: 0.6rem 1.2rem;
-  border-radius: 8px;
-  font-weight: 500;
+/* Fix legibility and weird paddings on all buttons from minecraft-css */
+.button-primary, .button-secondary, .button-tertiary, .button-normal {
+  font-family: MinecraftRegular, sans-serif !important;
+  letter-spacing: 0.5px !important;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.5) !important;
 }
 
-.btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: var(--border-glass-focus);
-  transform: translateY(-1px);
-}
-
-/* Input Fields styling */
-input, select, textarea {
-  font-family: var(--font-sans);
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid var(--border-glass);
-  border-radius: 8px;
-  color: var(--text-main);
+/* Reset the bizarre paddings from the framework if they don't have mc-action-row */
+.button-primary {
   padding: 0.6rem 1rem;
-  outline: none;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
-
-input:focus, select:focus, textarea:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px var(--primary-glow);
+.button-secondary, .button-tertiary {
+  padding: 0.6rem 1rem;
 }
