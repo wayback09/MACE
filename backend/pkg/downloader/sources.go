@@ -2,6 +2,7 @@ package downloader
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"net/http"
 	"sort"
@@ -78,6 +79,20 @@ func CompareVersions(v1, v2 string) int {
 	return 0
 }
 
+// isMinecraftRelease checks whether a version string looks like a valid
+// Minecraft release version (classic "1.x" or year-based "26.x"+).
+func isMinecraftRelease(id string) bool {
+	parts := strings.Split(id, ".")
+	if len(parts) == 0 {
+		return false
+	}
+	if parts[0] == "1" {
+		return true
+	}
+	major, err := strconv.Atoi(parts[0])
+	return err == nil && major >= 26
+}
+
 // FetchVanillaVersions fetches release versions from Mojang manifest.
 func FetchVanillaVersions() ([]string, error) {
 	resp, err := httpClient.Get("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json")
@@ -93,7 +108,7 @@ func FetchVanillaVersions() ([]string, error) {
 
 	var list []string
 	for _, v := range manifest.Versions {
-		if v.Type == "release" && strings.HasPrefix(v.ID, "1.") {
+		if v.Type == "release" && isMinecraftRelease(v.ID) {
 			list = append(list, v.ID)
 		}
 	}
@@ -117,7 +132,7 @@ func FetchPaperVersions() ([]string, error) {
 
 	var list []string
 	for _, v := range data.Versions {
-		if strings.HasPrefix(v, "1.") {
+		if isMinecraftRelease(v) {
 			list = append(list, v)
 		}
 	}
@@ -148,7 +163,7 @@ func FetchFabricVersions() ([]string, error) {
 
 	var list []string
 	for _, v := range versions {
-		if v.Stable && strings.HasPrefix(v.Version, "1.") {
+		if v.Stable && isMinecraftRelease(v.Version) {
 			list = append(list, v.Version)
 		}
 	}
@@ -173,7 +188,7 @@ func FetchQuiltVersions() ([]string, error) {
 
 	var list []string
 	for _, v := range versions {
-		if v.Stable && strings.HasPrefix(v.Version, "1.") {
+		if v.Stable && isMinecraftRelease(v.Version) {
 			list = append(list, v.Version)
 		}
 	}
@@ -201,7 +216,7 @@ func FetchForgeVersions() ([]string, error) {
 		idx := strings.Index(key, "-")
 		if idx != -1 {
 			mcVer := key[:idx]
-			if strings.HasPrefix(mcVer, "1.") {
+			if isMinecraftRelease(mcVer) {
 				versionMap[mcVer] = true
 			}
 		}
@@ -337,3 +352,171 @@ func FetchLatestQuiltInstaller() (string, error) {
 
 	return "0.9.2", nil // Fallback
 }
+
+// MapNeoForgeToMC converts a NeoForge version string to its corresponding Minecraft version.
+func MapNeoForgeToMC(neoforgeVer string) string {
+	idx := strings.Index(neoforgeVer, "-")
+	if idx != -1 {
+		neoforgeVer = neoforgeVer[:idx]
+	}
+	idxPlus := strings.Index(neoforgeVer, "+")
+	if idxPlus != -1 {
+		neoforgeVer = neoforgeVer[:idxPlus]
+	}
+
+	parts := strings.Split(neoforgeVer, ".")
+	if len(parts) < 2 {
+		return ""
+	}
+
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return ""
+	}
+
+	if major >= 26 {
+		if len(parts) >= 3 {
+			if parts[2] == "0" {
+				return parts[0] + "." + parts[1]
+			}
+			return parts[0] + "." + parts[1] + "." + parts[2]
+		}
+		return parts[0] + "." + parts[1]
+	} else if major >= 20 {
+		if parts[1] == "0" {
+			return "1." + parts[0]
+		}
+		return "1." + parts[0] + "." + parts[1]
+	}
+
+	return ""
+}
+
+// CompareNeoForgeVersions compares two NeoForge versions. Returns 1 if v1 > v2, -1 if v1 < v2, and 0 if v1 == v2.
+func CompareNeoForgeVersions(v1, v2 string) int {
+	isBeta1 := strings.Contains(v1, "-") || strings.Contains(v1, "+")
+	isBeta2 := strings.Contains(v2, "-") || strings.Contains(v2, "+")
+
+	cleanV1 := v1
+	if idx := strings.Index(cleanV1, "-"); idx != -1 {
+		cleanV1 = cleanV1[:idx]
+	}
+	if idx := strings.Index(cleanV1, "+"); idx != -1 {
+		cleanV1 = cleanV1[:idx]
+	}
+
+	cleanV2 := v2
+	if idx := strings.Index(cleanV2, "-"); idx != -1 {
+		cleanV2 = cleanV2[:idx]
+	}
+	if idx := strings.Index(cleanV2, "+"); idx != -1 {
+		cleanV2 = cleanV2[:idx]
+	}
+
+	parts1 := strings.Split(cleanV1, ".")
+	parts2 := strings.Split(cleanV2, ".")
+
+	maxLen := len(parts1)
+	if len(parts2) > maxLen {
+		maxLen = len(parts2)
+	}
+
+	for i := 0; i < maxLen; i++ {
+		var p1, p2 int
+		if i < len(parts1) {
+			p1, _ = strconv.Atoi(parts1[i])
+		}
+		if i < len(parts2) {
+			p2, _ = strconv.Atoi(parts2[i])
+		}
+
+		if p1 != p2 {
+			if p1 < p2 {
+				return -1
+			}
+			return 1
+		}
+	}
+
+	if isBeta1 && !isBeta2 {
+		return -1
+	}
+	if !isBeta1 && isBeta2 {
+		return 1
+	}
+
+	return strings.Compare(v1, v2)
+}
+
+// FetchNeoForgeVersions fetches unique Minecraft versions from official NeoForge Maven repository XML.
+func FetchNeoForgeVersions() ([]string, error) {
+	resp, err := httpClient.Get("https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml")
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var metadata struct {
+		Versioning struct {
+			Versions []string `xml:"versions>version"`
+		} `xml:"versioning"`
+	}
+	if err := xml.NewDecoder(resp.Body).Decode(&metadata); err != nil {
+		return nil, err
+	}
+
+	mcVerMap := make(map[string]bool)
+	for _, v := range metadata.Versioning.Versions {
+		mcVer := MapNeoForgeToMC(v)
+		if mcVer != "" {
+			mcVerMap[mcVer] = true
+		}
+	}
+
+	var list []string
+	for mcVer := range mcVerMap {
+		list = append(list, mcVer)
+	}
+
+	sort.Slice(list, func(i, j int) bool {
+		return CompareVersions(list[i], list[j]) > 0
+	})
+
+	return list, nil
+}
+
+// GetNeoForgeVersionForMC returns the best NeoForge version for a given Minecraft version.
+func GetNeoForgeVersionForMC(mcVersion string) (string, error) {
+	resp, err := httpClient.Get("https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml")
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var metadata struct {
+		Versioning struct {
+			Versions []string `xml:"versions>version"`
+		} `xml:"versioning"`
+	}
+	if err := xml.NewDecoder(resp.Body).Decode(&metadata); err != nil {
+		return "", err
+	}
+
+	var candidates []string
+	for _, v := range metadata.Versioning.Versions {
+		if MapNeoForgeToMC(v) == mcVersion {
+			candidates = append(candidates, v)
+		}
+	}
+
+	if len(candidates) == 0 {
+		return "", fmt.Errorf("no NeoForge version found for Minecraft %s", mcVersion)
+	}
+
+	sort.Slice(candidates, func(i, j int) bool {
+		return CompareNeoForgeVersions(candidates[i], candidates[j]) > 0 // Descending (latest first)
+	})
+
+	return candidates[0], nil
+}
+

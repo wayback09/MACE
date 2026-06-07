@@ -9,6 +9,7 @@ const (
 	Fabric  ServerType = "fabric"
 	Quilt   ServerType = "quilt"
 	Forge   ServerType = "forge"
+	NeoForge ServerType = "neoforge"
 )
 
 type ServerInstance struct {
@@ -32,6 +33,12 @@ type CreateServerPayload struct {
 	Type     string `json:"type"`
 	MemoryMB int    `json:"memoryMB"`
 }
+
+type ImportServerPayload struct {
+	Path string `json:"path"`
+	Name string `json:"name"`
+}
+
 
 type UpdateConfigPayload struct {
 	ID        string `json:"id"`

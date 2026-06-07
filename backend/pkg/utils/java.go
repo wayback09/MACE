@@ -106,3 +106,20 @@ func GetJavaVersion(javaPath string) string {
 
 	return "Unknown"
 }
+
+// IsJava25 returns true if the Java version string matches Java 25.
+func IsJava25(version string) bool {
+	return strings.HasPrefix(version, "25.") || version == "25" || strings.HasPrefix(version, "25-")
+}
+
+// FindJava25 searches detected Java installations for a Java 25 path.
+func FindJava25() (string, bool) {
+	installs := FindJavaInstallations()
+	for _, inst := range installs {
+		if IsJava25(inst.Version) {
+			return inst.Path, true
+		}
+	}
+	return "", false
+}
+

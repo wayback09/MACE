@@ -1,4 +1,4 @@
-export type ServerType = 'vanilla' | 'spigot' | 'paper' | 'fabric' | 'quilt' | 'forge';
+export type ServerType = 'vanilla' | 'spigot' | 'paper' | 'fabric' | 'quilt' | 'forge' | 'neoforge';
 
 export interface ServerInstance {
   id: string;
