@@ -255,6 +255,36 @@ func InstallServer(id string, serverType string, version string, installDir stri
 		}
 		return nil
 
+	case "neoforge":
+		neoforgeVersion, err := GetNeoForgeVersionForMC(version)
+		if err != nil {
+			return err
+		}
+
+		instURL := fmt.Sprintf("https://maven.neoforged.net/releases/net/neoforged/neoforge/%s/neoforge-%s-installer.jar", neoforgeVersion, neoforgeVersion)
+		installerJar := filepath.Join(tempDir, fmt.Sprintf("neoforge-%s-installer.jar", neoforgeVersion))
+
+		if !utils.FileExists(installerJar) {
+			if err := DownloadJar(id, instURL, installerJar); err != nil {
+				return err
+			}
+		}
+
+		cmd := exec.Command(javaPath, "-jar", installerJar, "--installServer")
+		if runtime.GOOS == "windows" {
+			cmd.SysProcAttr = &syscall.SysProcAttr{
+				HideWindow: true,
+			}
+		}
+		cmd.Dir = installDir
+		lw := &logWriter{id: id}
+		cmd.Stdout = lw
+		cmd.Stderr = lw
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("neoforge installer failed: %v", err)
+		}
+		return nil
+
 	default:
 		return fmt.Errorf("unsupported server type: %s", serverType)
 	}

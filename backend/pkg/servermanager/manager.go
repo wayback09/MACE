@@ -162,10 +162,16 @@ func CreateServer(payload CreateServerPayload) (*ServerInstance, error) {
 	}
 
 	// Find default java
-	javas := utils.FindJavaInstallations()
 	javaPath := "java"
-	if len(javas) > 0 {
-		javaPath = javas[0].Path
+	if RequiresJava25(ServerType(payload.Type), payload.Version) {
+		if j25Path, found := utils.FindJava25(); found {
+			javaPath = j25Path
+		}
+	} else {
+		javas := utils.FindJavaInstallations()
+		if len(javas) > 0 {
+			javaPath = javas[0].Path
+		}
 	}
 
 	// 2. Perform Jar Downloading / Installation in background
@@ -231,6 +237,20 @@ func StartServer(id string) (string, error) {
 	inst, err := LoadServer(id)
 	if err != nil {
 		return "", err
+	}
+
+	// Validate Java 25 requirement
+	if RequiresJava25(inst.Type, inst.Version) {
+		currentVer := utils.GetJavaVersion(inst.JavaPath)
+		if !utils.IsJava25(currentVer) {
+			if j25Path, found := utils.FindJava25(); found {
+				inst.JavaPath = j25Path
+				SaveServer(inst)
+				launcher.WriteLog(id, "[MACE] Auto-aligned server Java runtime to Java 25: "+j25Path)
+			} else {
+				return "", fmt.Errorf("this server version requires a Java 25 runtime environment, but only Java %s was configured and no Java 25 was detected on the system", currentVer)
+			}
+		}
 	}
 
 	statusCallback := func(instanceID string, status string) {
@@ -361,7 +381,7 @@ func GetAvailableVersions() (map[string][]string, error) {
 		err    error
 	}
 
-	ch := make(chan res, 5)
+	ch := make(chan res, 6)
 
 	go func() {
 		v, err := downloader.FetchVanillaVersions()
@@ -383,11 +403,15 @@ func GetAvailableVersions() (map[string][]string, error) {
 		v, err := downloader.FetchForgeVersions()
 		ch <- res{"forge", v, err}
 	}()
+	go func() {
+		v, err := downloader.FetchNeoForgeVersions()
+		ch <- res{"neoforge", v, err}
+	}()
 
 	results := make(map[string][]string)
 	var firstErr error
 
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 6; i++ {
 		r := <-ch
 		if r.err != nil {
 			if firstErr == nil {
@@ -421,3 +445,9 @@ func GetAvailableVersions() (map[string][]string, error) {
 func GetServerResources(id string) (*launcher.ResourceUsage, error) {
 	return launcher.GetResourceUsage(id)
 }
+
+// RequiresJava25 returns true if the server type or minecraft version requires Java 25.
+func RequiresJava25(serverType ServerType, mcVersion string) bool {
+	return strings.HasPrefix(mcVersion, "26.1")
+}
+
