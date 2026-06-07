@@ -5,7 +5,7 @@ import type { ServerType } from "../ipc/types";
 
 interface CreateServerProps {
   refreshServers: () => void;
-  setActiveTab: (tab: "dashboard" | "instances" | "create" | "settings") => void;
+  setActiveTab: (tab: "dashboard" | "instances" | "create" | "settings" | "import") => void;
 }
 
 export default function CreateServer({ refreshServers, setActiveTab }: CreateServerProps) {
