@@ -49,3 +49,7 @@ wails build
 ```
 
 The compiled binary will be located in the `build/bin/` folder.
+
+## License
+
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](file:///c:/Users/temit/Desktop/Mace/LICENSE) file for details.
