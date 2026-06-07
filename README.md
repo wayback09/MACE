@@ -5,6 +5,7 @@ Mace is a lightweight, cross-platform desktop application for managing Minecraft
 ## Features
 
 - **Isolated Server Instances**: Create and manage multiple isolated server instances in separate directories.
+- **Import Existing Servers**: Hook into an existing Minecraft server directory to manage it without moving your files. Auto-detects loader type and version.
 - **Multiple Loaders Supported**: Automatic download and setup of Vanilla, Paper, Fabric, Quilt, Forge, and NeoForge servers.
 - **Automatic Java Detection**: Scans the system for installed Java versions to ensure compatibility.
 - **Real-Time Console**: Interactive terminal console with support for sending commands directly to the server input stream.
@@ -51,7 +52,8 @@ wails build
 The compiled binary will be located in the `build/bin/` folder.
 
 ## Links
-- **Website**: [Here](https://mace-7yf.pages.dev)
+
+- **Website**: [MACE website](https://mace-7yf.pages.dev)
 - **Discord**: [Join the community](https://discord.com/invite/zrrHQC4QKF)
 
 ## License

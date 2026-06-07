@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import Dashboard from "./components/Dashboard";
 import Instances from "./pages/Instances";
 import CreateServer from "./pages/CreateServer";
+import ImportServer from "./pages/ImportServer";
 import Settings from "./pages/Settings";
-import { Server, PlusCircle, Settings as SettingsIcon, LayoutDashboard, Cpu, Database } from "lucide-react";
+import { Server, PlusCircle, FolderOpen, Settings as SettingsIcon, LayoutDashboard, Cpu, Database } from "lucide-react";
 import { listServers, detectJava } from "./ipc/serverAPI";
 import type { ServerInstance } from "./ipc/types";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "instances" | "create" | "settings">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "instances" | "create" | "import" | "settings">("dashboard");
   const [servers, setServers] = useState<ServerInstance[]>([]);
   const [loading, setLoading] = useState(true);
   const [javaDetected, setJavaDetected] = useState(false);
@@ -47,6 +48,8 @@ export default function App() {
         return <Instances servers={servers} refreshServers={refreshServers} initialSelectedId={selectedInstanceId} onSelectionChange={setSelectedInstanceId} />;
       case "create":
         return <CreateServer refreshServers={refreshServers} setActiveTab={setActiveTab} />;
+      case "import":
+        return <ImportServer refreshServers={refreshServers} setActiveTab={setActiveTab} />;
       case "settings":
         return <Settings />;
       default:
@@ -136,6 +139,15 @@ export default function App() {
             >
               <PlusCircle size={18} />
               New Instance
+            </button>
+
+            <button
+              onClick={() => setActiveTab("import")}
+              className={activeTab === "import" ? "button-primary" : "button-normal"}
+              style={{ width: "100%", justifyContent: "flex-start", gap: "1rem", padding: "0.75rem 1rem", margin: 0 }}
+            >
+              <FolderOpen size={18} />
+              Import Server
             </button>
 
             <button

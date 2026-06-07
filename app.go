@@ -63,6 +63,21 @@ func (a *App) CreateServer(payload servermanager.CreateServerPayload) (*serverma
 	return servermanager.CreateServer(payload)
 }
 
+// BrowseForServerDir opens a native folder selection dialog.
+func (a *App) BrowseForServerDir() (string, error) {
+	return runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select Existing Server Directory",
+	})
+}
+
+// ImportServer registers an external server directory as a managed instance.
+func (a *App) ImportServer(payload servermanager.ImportServerPayload) (*servermanager.ServerInstance, error) {
+	if payload.Path == "" {
+		return nil, fmt.Errorf("missing path")
+	}
+	return servermanager.ImportServer(payload)
+}
+
 // StartServer starts a server instance process.
 func (a *App) StartServer(id string) (string, error) {
 	return servermanager.StartServer(id)

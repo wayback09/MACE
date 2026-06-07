@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -232,6 +233,119 @@ func CreateServer(payload CreateServerPayload) (*ServerInstance, error) {
 	return inst, nil
 }
 
+// ImportServer registers an external server directory as a managed instance.
+func ImportServer(payload ImportServerPayload) (*ServerInstance, error) {
+	absPath, err := filepath.Abs(payload.Path)
+	if err != nil {
+		return nil, fmt.Errorf("invalid path: %v", err)
+	}
+
+	info, err := os.Stat(absPath)
+	if err != nil || !info.IsDir() {
+		return nil, fmt.Errorf("invalid directory: %s", absPath)
+	}
+
+	// Basic validation: ensure there's at least a jar or script
+	files, err := os.ReadDir(absPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var hasJarOrScript bool
+	var detectedType ServerType = Vanilla
+	
+	for _, f := range files {
+		name := strings.ToLower(f.Name())
+		if strings.HasSuffix(name, ".jar") || strings.HasSuffix(name, ".bat") || strings.HasSuffix(name, ".sh") {
+			hasJarOrScript = true
+		}
+		
+		if name == "run.bat" || name == "run.sh" {
+			// Read script to detect forge vs neoforge
+			content, _ := os.ReadFile(filepath.Join(absPath, f.Name()))
+			if strings.Contains(strings.ToLower(string(content)), "neoforge") {
+				detectedType = NeoForge
+			} else {
+				detectedType = Forge
+			}
+		} else if strings.HasPrefix(name, "quilt-server") {
+			detectedType = Quilt
+		} else if strings.HasPrefix(name, "fabric-server") || name == ".fabric" {
+			detectedType = Fabric
+		} else if strings.HasPrefix(name, "paper") || strings.HasPrefix(name, "patched") {
+			detectedType = Paper
+		} else if strings.HasPrefix(name, "spigot") {
+			detectedType = Spigot
+		}
+	}
+
+	if !hasJarOrScript {
+		return nil, fmt.Errorf("no server jars or run scripts found in directory")
+	}
+
+	// Create a safe ID slug
+	name := payload.Name
+	if name == "" {
+		name = filepath.Base(absPath)
+	}
+	
+	safeName := strings.ToLower(name)
+	safeName = strings.ReplaceAll(safeName, " ", "-")
+	var sb strings.Builder
+	for _, r := range safeName {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
+			sb.WriteRune(r)
+		}
+	}
+	id := fmt.Sprintf("%s-import-%d", sb.String(), time.Now().Unix()%100000)
+
+	// Java path
+	javaPath := "java"
+	javas := utils.FindJavaInstallations()
+	if len(javas) > 0 {
+		javaPath = javas[0].Path
+	}
+
+	// Try extracting motd and port
+	port := 25565
+	propsFile := filepath.Join(absPath, "server.properties")
+	if utils.FileExists(propsFile) {
+		if content, err := os.ReadFile(propsFile); err == nil {
+			lines := strings.Split(string(content), "\n")
+			for _, line := range lines {
+				line = strings.TrimSpace(line)
+				if strings.HasPrefix(line, "server-port=") {
+					fmt.Sscanf(line, "server-port=%d", &port)
+				}
+				if strings.HasPrefix(line, "motd=") && payload.Name == "" {
+					name = strings.TrimPrefix(line, "motd=")
+				}
+			}
+		}
+	}
+
+	inst := &ServerInstance{
+		ID:        id,
+		Name:      name,
+		Version:   "imported",
+		Type:      detectedType,
+		Path:      absPath, // Use external path
+		Status:    "offline",
+		JavaPath:  javaPath,
+		MemoryMB:  2048,
+		World:     "world",
+		IPAddress: "127.0.0.1",
+		Port:      port,
+		Watchdog:  false,
+	}
+
+	if err := SaveServer(inst); err != nil {
+		return nil, err
+	}
+
+	return inst, nil
+}
+
 // StartServer handles starting a server instance process.
 func StartServer(id string) (string, error) {
 	inst, err := LoadServer(id)
@@ -340,8 +454,16 @@ func DeleteServer(id string) error {
 		time.Sleep(500 * time.Millisecond) // Give time to exit
 	}
 
-	// Delete folder
-	return os.RemoveAll(inst.Path)
+	// For managed servers, inst.Path == GetServerRoot()/id
+	// For imported servers, inst.Path is external.
+	// Only delete the actual files if it's a managed server.
+	managedPath := filepath.Clean(filepath.Join(GetServerRoot(), id))
+	if filepath.Clean(inst.Path) == managedPath {
+		return os.RemoveAll(inst.Path)
+	}
+	
+	// External server, just delete the MACE metadata wrapper
+	return os.RemoveAll(managedPath)
 }
 
 // DetectJava searches for system java paths.
@@ -448,6 +570,13 @@ func GetServerResources(id string) (*launcher.ResourceUsage, error) {
 
 // RequiresJava25 returns true if the server type or minecraft version requires Java 25.
 func RequiresJava25(serverType ServerType, mcVersion string) bool {
-	return strings.HasPrefix(mcVersion, "26.1")
+	parts := strings.Split(mcVersion, ".")
+	if len(parts) == 0 {
+		return false
+	}
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return false
+	}
+	return major >= 26
 }
-

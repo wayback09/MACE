@@ -1,6 +1,7 @@
 package downloader
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -55,6 +56,7 @@ const (
 	CFModLoaderFabric   CurseForgeModLoaderType = 4
 	CFModLoaderQuilt    CurseForgeModLoaderType = 5
 	CFModLoaderNeoForge CurseForgeModLoaderType = 6
+	CFModLoaderUnknown  CurseForgeModLoaderType = 0
 )
 
 // CurseForgeSearchParameters holds query parameters for CurseForge API search requests.
@@ -70,17 +72,18 @@ type CurseForgeSearchParameters struct {
 
 // GetCurseForgeLoaderType maps a loader name to CurseForge's specific integer loader type.
 // Isolates NeoForge (CFModLoaderNeoForge = 6) from legacy Forge (CFModLoaderForge = 1).
-func GetCurseForgeLoaderType(loader string) CurseForgeModLoaderType {
+func GetCurseForgeLoaderType(loader string) (CurseForgeModLoaderType, error) {
 	switch strings.ToLower(loader) {
 	case "neoforge":
-		return CFModLoaderNeoForge
+		return CFModLoaderNeoForge, nil
 	case "fabric":
-		return CFModLoaderFabric
+		return CFModLoaderFabric, nil
 	case "quilt":
-		return CFModLoaderQuilt
+		return CFModLoaderQuilt, nil
 	case "forge":
-		return CFModLoaderForge
+		return CFModLoaderForge, nil
 	default:
-		return CFModLoaderForge
+		return CFModLoaderUnknown, fmt.Errorf("unsupported loader type: %s", loader)
 	}
 }
+

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { createServer, getAvailableVersions } from "../ipc/serverAPI";
 import { Download, ShieldAlert, Cpu } from "lucide-react";
+import type { ServerType } from "../ipc/types";
 
 interface CreateServerProps {
   refreshServers: () => void;
@@ -34,7 +35,7 @@ export default function CreateServer({ refreshServers, setActiveTab }: CreateSer
           neoforge: ["26.1.2","26.1.1","26.1.0","1.21.4","1.21.3","1.21.1","1.21","1.20.6","1.20.4","1.20.2"],
         };
         setVersionsMap(fallback);
-        setVersion("26.1.2");
+        setVersion(fallback.vanilla[0] || "26.1.2");
       } finally {
         setFetchingVersions(false);
       }
@@ -54,7 +55,7 @@ export default function CreateServer({ refreshServers, setActiveTab }: CreateSer
     setLoading(true);
     setError("");
     try {
-      await createServer({ name, type, version, memoryMB: Number(memoryMB) });
+      await createServer({ name, type: type as ServerType, version, memoryMB: Number(memoryMB) });
       refreshServers();
       setActiveTab("instances");
     } catch (err: any) {

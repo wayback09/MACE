@@ -1,4 +1,4 @@
-import type { ServerInstance, JavaInstall } from "./types";
+import type { ServerInstance, JavaInstall, ServerType } from "./types";
 
 // Type for the Wails Go App bindings and runtime helper
 declare global {
@@ -10,9 +10,11 @@ declare global {
           CreateServer(payload: {
             name: string;
             version: string;
-            type: string;
+            type: ServerType;
             memoryMB: number;
           }): Promise<ServerInstance>;
+          BrowseForServerDir(): Promise<string>;
+          ImportServer(payload: { path: string; name: string }): Promise<ServerInstance>;
           StartServer(id: string): Promise<string>;
           StopServer(id: string): Promise<string>;
           RestartServer(id: string): Promise<void>;
@@ -51,10 +53,18 @@ export async function listServers(): Promise<ServerInstance[]> {
 export async function createServer(payload: {
   name: string;
   version: string;
-  type: string;
+  type: ServerType;
   memoryMB: number;
 }): Promise<ServerInstance> {
   return window.go.main.App.CreateServer(payload);
+}
+
+export async function browseForServerDir(): Promise<string> {
+  return window.go.main.App.BrowseForServerDir();
+}
+
+export async function importServer(payload: { path: string; name: string }): Promise<ServerInstance> {
+  return window.go.main.App.ImportServer(payload);
 }
 
 export async function startServer(id: string): Promise<{ status: string }> {

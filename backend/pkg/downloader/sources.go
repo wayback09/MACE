@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -448,20 +449,47 @@ func CompareNeoForgeVersions(v1, v2 string) int {
 	return strings.Compare(v1, v2)
 }
 
-// FetchNeoForgeVersions fetches unique Minecraft versions from official NeoForge Maven repository XML.
-func FetchNeoForgeVersions() ([]string, error) {
+type neoForgeMavenMetadata struct {
+	Versioning struct {
+		Versions []string `xml:"versions>version"`
+	} `xml:"versioning"`
+}
+
+var (
+	neoForgeMetadataCache     neoForgeMavenMetadata
+	neoForgeMetadataCacheTime time.Time
+	neoForgeMetadataMu        sync.Mutex
+)
+
+func fetchNeoForgeMetadataCached() (neoForgeMavenMetadata, error) {
+	neoForgeMetadataMu.Lock()
+	defer neoForgeMetadataMu.Unlock()
+
+	if !neoForgeMetadataCacheTime.IsZero() && time.Since(neoForgeMetadataCacheTime) < 1*time.Hour {
+		return neoForgeMetadataCache, nil
+	}
+
+	var metadata neoForgeMavenMetadata
 	resp, err := httpClient.Get("https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml")
 	if err != nil {
-		return nil, err
+		return metadata, err
 	}
 	defer resp.Body.Close()
 
-	var metadata struct {
-		Versioning struct {
-			Versions []string `xml:"versions>version"`
-		} `xml:"versioning"`
-	}
 	if err := xml.NewDecoder(resp.Body).Decode(&metadata); err != nil {
+		return metadata, err
+	}
+
+	neoForgeMetadataCache = metadata
+	neoForgeMetadataCacheTime = time.Now()
+
+	return metadata, nil
+}
+
+// FetchNeoForgeVersions fetches unique Minecraft versions from official NeoForge Maven repository XML.
+func FetchNeoForgeVersions() ([]string, error) {
+	metadata, err := fetchNeoForgeMetadataCached()
+	if err != nil {
 		return nil, err
 	}
 
@@ -487,18 +515,8 @@ func FetchNeoForgeVersions() ([]string, error) {
 
 // GetNeoForgeVersionForMC returns the best NeoForge version for a given Minecraft version.
 func GetNeoForgeVersionForMC(mcVersion string) (string, error) {
-	resp, err := httpClient.Get("https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml")
+	metadata, err := fetchNeoForgeMetadataCached()
 	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	var metadata struct {
-		Versioning struct {
-			Versions []string `xml:"versions>version"`
-		} `xml:"versioning"`
-	}
-	if err := xml.NewDecoder(resp.Body).Decode(&metadata); err != nil {
 		return "", err
 	}
 

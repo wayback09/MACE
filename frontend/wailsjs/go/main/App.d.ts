@@ -3,6 +3,8 @@
 import {servermanager} from '../models';
 import {utils} from '../models';
 
+export function BrowseForServerDir():Promise<string>;
+
 export function CreateServer(arg1:servermanager.CreateServerPayload):Promise<servermanager.ServerInstance>;
 
 export function DeleteServer(arg1:string):Promise<void>;
@@ -16,6 +18,8 @@ export function GetConsoleLogs(arg1:string):Promise<Array<string>>;
 export function GetServerProperties(arg1:string):Promise<string>;
 
 export function GetServerResources(arg1:string):Promise<Record<string, any>>;
+
+export function ImportServer(arg1:servermanager.ImportServerPayload):Promise<servermanager.ServerInstance>;
 
 export function ListServers():Promise<Array<servermanager.ServerInstance>>;
 
