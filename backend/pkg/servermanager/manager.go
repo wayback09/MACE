@@ -1,8 +1,10 @@
 package servermanager
 
 import (
+	"archive/zip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -251,36 +253,58 @@ func ImportServer(payload ImportServerPayload) (*ServerInstance, error) {
 		return nil, err
 	}
 
-	var hasJarOrScript bool
+	var isValidJar bool
+	var hasRunScript bool
 	var detectedType ServerType = Vanilla
 	
 	for _, f := range files {
 		name := strings.ToLower(f.Name())
-		if strings.HasSuffix(name, ".jar") || strings.HasSuffix(name, ".bat") || strings.HasSuffix(name, ".sh") {
-			hasJarOrScript = true
-		}
 		
-		if name == "run.bat" || name == "run.sh" {
-			// Read script to detect forge vs neoforge
+		if name == "run.bat" || name == "run.sh" || name == "start.bat" || name == "start.sh" {
+			hasRunScript = true
 			content, _ := os.ReadFile(filepath.Join(absPath, f.Name()))
 			if strings.Contains(strings.ToLower(string(content)), "neoforge") {
 				detectedType = NeoForge
-			} else {
+			} else if strings.Contains(strings.ToLower(string(content)), "forge") {
 				detectedType = Forge
 			}
 		} else if strings.HasPrefix(name, "quilt-server") {
 			detectedType = Quilt
+			if strings.HasSuffix(name, ".jar") && isMinecraftJar(filepath.Join(absPath, f.Name())) {
+				isValidJar = true
+			}
 		} else if strings.HasPrefix(name, "fabric-server") || name == ".fabric" {
 			detectedType = Fabric
+			if strings.HasSuffix(name, ".jar") && isMinecraftJar(filepath.Join(absPath, f.Name())) {
+				isValidJar = true
+			}
 		} else if strings.HasPrefix(name, "paper") || strings.HasPrefix(name, "patched") {
 			detectedType = Paper
+			if strings.HasSuffix(name, ".jar") && isMinecraftJar(filepath.Join(absPath, f.Name())) {
+				isValidJar = true
+			}
 		} else if strings.HasPrefix(name, "spigot") {
 			detectedType = Spigot
+			if strings.HasSuffix(name, ".jar") && isMinecraftJar(filepath.Join(absPath, f.Name())) {
+				isValidJar = true
+			}
+		} else if name == "server.jar" || strings.HasSuffix(name, ".jar") {
+			if isMinecraftJar(filepath.Join(absPath, f.Name())) {
+				isValidJar = true
+				if detectedType == Vanilla && strings.Contains(name, "forge") {
+					detectedType = Forge
+				}
+			}
 		}
 	}
 
-	if !hasJarOrScript {
-		return nil, fmt.Errorf("no server jars or run scripts found in directory")
+	if !isValidJar && !hasRunScript {
+		return nil, fmt.Errorf("no valid minecraft server jars or run scripts found in directory")
+	}
+
+	// mark existence of critical files like eula.txt (or attempt to create eula.txt if absent)
+	if !utils.FileExists(filepath.Join(absPath, "eula.txt")) {
+		os.WriteFile(filepath.Join(absPath, "eula.txt"), []byte("eula=true\n"), 0644)
 	}
 
 	// Create a safe ID slug
@@ -579,4 +603,36 @@ func RequiresJava25(serverType ServerType, mcVersion string) bool {
 		return false
 	}
 	return major >= 26
+}
+
+// isMinecraftJar performs a lightweight scan of a JAR file to confirm it's a Minecraft server JAR.
+func isMinecraftJar(jarPath string) bool {
+	r, err := zip.OpenReader(jarPath)
+	if err != nil {
+		return false
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		if f.Name == "META-INF/MANIFEST.MF" {
+			rc, err := f.Open()
+			if err == nil {
+				content, _ := io.ReadAll(rc)
+				rc.Close()
+				s := string(content)
+				if strings.Contains(s, "net.minecraft.server.Main") ||
+					strings.Contains(s, "org.bukkit.craftbukkit.Main") ||
+					strings.Contains(s, "io.papermc.paperclip.Main") ||
+					strings.Contains(s, "net.fabricmc.loader.impl.launch.server.FabricServerLauncher") ||
+					strings.Contains(s, "org.quiltmc.loader.impl.launch.server.QuiltServerLauncher") ||
+					strings.Contains(s, "cpw.mods.bootstraplauncher.BootstrapLauncher") {
+					return true
+				}
+			}
+		}
+		if strings.HasPrefix(f.Name, "net/minecraft/server/") {
+			return true
+		}
+	}
+	return false
 }
