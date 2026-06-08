@@ -8,8 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
-	"syscall"
 	"time"
 
 	"mace/backend/pkg/launcher"

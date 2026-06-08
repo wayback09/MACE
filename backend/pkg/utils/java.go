@@ -6,9 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
-	"syscall"
 )
 
 type JavaInstall struct {
