@@ -9,5 +9,9 @@
   "frontend:dir": "frontend",
   "author": {
     "name": "wayback"
+  },
+  "info": {
+    "productName": "Mace",
+    "productVersion": "1.0.0-alpha"
   }
 }
