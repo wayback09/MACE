@@ -8,8 +8,9 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
+
+	"mace/backend/pkg/utils"
 )
 
 var (
@@ -145,11 +146,7 @@ func StartServer(id string, dir string, javaPath string, memoryMB int, watchdogE
 	go CaptureConsole(id, stderr)
 
 	// Hide window on Windows
-	if runtime.GOOS == "windows" {
-		cmd.SysProcAttr = &syscall.SysProcAttr{
-			HideWindow: true,
-		}
-	}
+	utils.HideWindow(cmd)
 
 	// Start the command
 	if err := cmd.Start(); err != nil {

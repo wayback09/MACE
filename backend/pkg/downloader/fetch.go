@@ -131,11 +131,7 @@ func InstallServer(id string, serverType string, version string, installDir stri
 
 		// 2. Run fabric-installer in server mode
 		cmd := exec.Command(javaPath, "-jar", installerJar, "server", "-mcversion", version, "-downloadMinecraft")
-		if runtime.GOOS == "windows" {
-			cmd.SysProcAttr = &syscall.SysProcAttr{
-				HideWindow: true,
-			}
-		}
+		utils.HideWindow(cmd)
 		cmd.Dir = installDir
 		lw := &logWriter{id: id}
 		cmd.Stdout = lw
@@ -179,11 +175,7 @@ func InstallServer(id string, serverType string, version string, installDir stri
 
 		// 2. Run quilt-installer
 		cmd := exec.Command(javaPath, "-jar", installerJar, "install", "server", version, "--download-server")
-		if runtime.GOOS == "windows" {
-			cmd.SysProcAttr = &syscall.SysProcAttr{
-				HideWindow: true,
-			}
-		}
+		utils.HideWindow(cmd)
 		cmd.Dir = installDir
 		lw := &logWriter{id: id}
 		cmd.Stdout = lw
@@ -231,11 +223,7 @@ func InstallServer(id string, serverType string, version string, installDir stri
 		}
 
 		cmd := exec.Command(javaPath, "-jar", installerJar, "--installServer")
-		if runtime.GOOS == "windows" {
-			cmd.SysProcAttr = &syscall.SysProcAttr{
-				HideWindow: true,
-			}
-		}
+		utils.HideWindow(cmd)
 		cmd.Dir = installDir
 		lw := &logWriter{id: id}
 		cmd.Stdout = lw
@@ -271,11 +259,7 @@ func InstallServer(id string, serverType string, version string, installDir stri
 		}
 
 		cmd := exec.Command(javaPath, "-jar", installerJar, "--installServer")
-		if runtime.GOOS == "windows" {
-			cmd.SysProcAttr = &syscall.SysProcAttr{
-				HideWindow: true,
-			}
-		}
+		utils.HideWindow(cmd)
 		cmd.Dir = installDir
 		lw := &logWriter{id: id}
 		cmd.Stdout = lw

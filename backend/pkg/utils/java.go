@@ -79,11 +79,7 @@ func FindJavaInstallations() []JavaInstall {
 // GetJavaVersion executes java -version and extracts the version string.
 func GetJavaVersion(javaPath string) string {
 	cmd := exec.Command(javaPath, "-version")
-	if runtime.GOOS == "windows" {
-		cmd.SysProcAttr = &syscall.SysProcAttr{
-			HideWindow: true,
-		}
-	}
+	HideWindow(cmd)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
