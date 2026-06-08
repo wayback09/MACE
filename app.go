@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"mace/backend/pkg/downloader"
 	"mace/backend/pkg/launcher"
 	"mace/backend/pkg/servermanager"
 	"mace/backend/pkg/utils"
@@ -201,3 +202,198 @@ func (a *App) UnsubscribeConsole(id string) {
 	}
 	a.mu.Unlock()
 }
+
+// --- Content Management (Mods / Plugins / Modpacks) ---
+
+// ListContent lists mod or plugin JARs for a server instance.
+// contentType is "mod" or "plugin".
+func (a *App) ListContent(id, contentType string) ([]servermanager.ContentItem, error) {
+	return servermanager.ListContent(id, contentType)
+}
+
+// AddContent copies a local JAR into the server's content directory.
+func (a *App) AddContent(id, srcPath, contentType string) (*servermanager.ContentItem, error) {
+	return servermanager.AddContent(id, srcPath, contentType)
+}
+
+// RemoveContent deletes a mod or plugin by filename.
+func (a *App) RemoveContent(id, fileName, contentType string) error {
+	return servermanager.RemoveContent(id, fileName, contentType)
+}
+
+// ToggleContent enables or disables a mod/plugin by renaming its file.
+func (a *App) ToggleContent(id, fileName, contentType string, enabled bool) error {
+	return servermanager.ToggleContent(id, fileName, contentType, enabled)
+}
+
+// ApplyModpack extracts a local modpack zip/mrpack and records the pack metadata.
+func (a *App) ApplyModpack(id, zipPath string) (*servermanager.ModpackMeta, error) {
+	return servermanager.ApplyModpack(id, zipPath)
+}
+
+// BrowseForJar opens a native file dialog filtered to .jar files.
+func (a *App) BrowseForJar() (string, error) {
+	return runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select Mod / Plugin JAR",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "JAR Files (*.jar)", Pattern: "*.jar"},
+		},
+	})
+}
+
+// BrowseForModpackZip opens a native file dialog filtered to modpack archives.
+func (a *App) BrowseForModpackZip() (string, error) {
+	return runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select Modpack Archive",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Modpack Files (*.mrpack, *.zip)", Pattern: "*.mrpack;*.zip"},
+		},
+	})
+}
+
+// --- Remote Mod / Plugin Search ---
+
+// SearchModrinth searches Modrinth for mods, plugins, or modpacks.
+// projectType is "mod", "plugin", or "modpack". Filters are auto-applied from loader+gameVersion.
+func (a *App) SearchModrinth(query, projectType, loader, gameVersion string) ([]downloader.ModrinthSearchResult, error) {
+	return downloader.SearchModrinth(query, projectType, loader, gameVersion, 20)
+}
+
+// BrowseModrinth returns popular content from Modrinth (no search query, sorted by downloads).
+func (a *App) BrowseModrinth(projectType, loader, gameVersion string) ([]downloader.ModrinthSearchResult, error) {
+	return downloader.BrowseModrinth(projectType, loader, gameVersion, 20)
+}
+
+// InstallModrinthMod resolves and downloads the best compatible version of a Modrinth project.
+func (a *App) InstallModrinthMod(serverID, projectID, loader, gameVersion, contentType string) (*servermanager.ContentItem, error) {
+	version, err := downloader.ResolveModrinthVersion(projectID, loader, gameVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	// Find the primary file
+	var downloadURL, fileName string
+	for _, f := range version.Files {
+		if f.Primary {
+			downloadURL = f.URL
+			fileName = f.Filename
+			break
+		}
+	}
+	if downloadURL == "" && len(version.Files) > 0 {
+		downloadURL = version.Files[0].URL
+		fileName = version.Files[0].Filename
+	}
+	if downloadURL == "" {
+		return nil, fmt.Errorf("no downloadable file found for this version")
+	}
+
+	return servermanager.DownloadAndInstallMod(serverID, downloadURL, fileName, contentType)
+}
+
+// SearchCurseForge searches CurseForge for mods, plugins, or modpacks.
+// classID: 6 = Mods, 5 = Bukkit Plugins, 4471 = Modpacks.
+func (a *App) SearchCurseForge(query string, classID int, loader, gameVersion string) ([]downloader.CurseForgeSearchResult, error) {
+	settings, err := utils.LoadSettings()
+	if err != nil {
+		return nil, err
+	}
+	return downloader.SearchCurseForge(settings.CurseForgeAPIKey, query, classID, loader, gameVersion, 20)
+}
+
+// BrowseCurseForge returns popular content from CurseForge (no search query, sorted by popularity).
+func (a *App) BrowseCurseForge(classID int, loader, gameVersion string) ([]downloader.CurseForgeSearchResult, error) {
+	settings, err := utils.LoadSettings()
+	if err != nil {
+		return nil, err
+	}
+	return downloader.BrowseCurseForge(settings.CurseForgeAPIKey, classID, loader, gameVersion, 20)
+}
+
+// InstallCurseForgeFile resolves and downloads the best file for a CurseForge mod.
+func (a *App) InstallCurseForgeFile(serverID string, modID int64, loader, gameVersion, contentType string) (*servermanager.ContentItem, error) {
+	settings, err := utils.LoadSettings()
+	if err != nil {
+		return nil, err
+	}
+
+	file, err := downloader.ResolveCurseForgeFile(settings.CurseForgeAPIKey, modID, loader, gameVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	downloadURL := file.DownloadURL
+	fileName := file.FileName
+
+	// If downloadUrl is missing, fetch it via the download-url endpoint
+	if downloadURL == "" {
+		downloadURL, fileName, err = downloader.GetCurseForgeDownloadURL(settings.CurseForgeAPIKey, modID, file.ID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return servermanager.DownloadAndInstallMod(serverID, downloadURL, fileName, contentType)
+}
+
+// --- Hangar (PaperMC Plugin Repository) ---
+
+// SearchHangar searches the Hangar API for Paper plugins.
+func (a *App) SearchHangar(query string) ([]downloader.HangarSearchResult, error) {
+	return downloader.SearchHangar(query, 20)
+}
+
+// BrowseHangar returns popular Paper plugins from Hangar.
+func (a *App) BrowseHangar() ([]downloader.HangarSearchResult, error) {
+	return downloader.BrowseHangar(20)
+}
+
+// InstallHangarPlugin resolves and downloads the best compatible version of a Hangar plugin.
+func (a *App) InstallHangarPlugin(serverID, slug, mcVersion string) (*servermanager.ContentItem, error) {
+	versionInfo, err := downloader.ResolveHangarVersion(slug, mcVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	return servermanager.DownloadAndInstallMod(serverID, versionInfo.DownloadURL, versionInfo.FileName, "plugin")
+}
+
+// --- Spiget (SpigotMC Plugin Repository) ---
+
+// SearchSpiget searches the Spiget API for SpigotMC plugins.
+func (a *App) SearchSpiget(query string) ([]downloader.SpigetSearchResult, error) {
+	return downloader.SearchSpiget(query, 20)
+}
+
+// BrowseSpiget returns popular SpigotMC plugins from Spiget.
+func (a *App) BrowseSpiget() ([]downloader.SpigetSearchResult, error) {
+	return downloader.BrowseSpiget(20)
+}
+
+// InstallSpigetPlugin resolves and downloads a Spiget plugin.
+func (a *App) InstallSpigetPlugin(serverID string, resourceID int64) (*servermanager.ContentItem, error) {
+	downloadURL, fileName, err := downloader.ResolveSpigetDownloadURL(resourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	return servermanager.DownloadAndInstallMod(serverID, downloadURL, fileName, "plugin")
+}
+
+// --- App Settings ---
+
+// GetAppSettings returns the current application settings.
+func (a *App) GetAppSettings() (*utils.AppSettings, error) {
+	return utils.LoadSettings()
+}
+
+// SaveAppSettings persists application settings to disk.
+func (a *App) SaveAppSettings(settings utils.AppSettings) error {
+	return utils.SaveSettings(&settings)
+}
+
+// ValidateCurseForgeKey tests whether the given API key is accepted by CurseForge.
+func (a *App) ValidateCurseForgeKey(apiKey string) error {
+	return downloader.ValidateCurseForgeKey(apiKey)
+}
+

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -228,6 +229,9 @@ func CreateServer(payload CreateServerPayload) (*ServerInstance, error) {
 		// Write EULA
 		os.WriteFile(filepath.Join(serverDir, "eula.txt"), []byte("eula=true\n"), 0644)
 
+		// Ensure mods/ and plugins/ directories exist
+		EnsureContentDirs(serverDir)
+
 		launcher.WriteLog(id, "[MACE] Installation complete!")
 		setStatus(id, "offline")
 	}()
@@ -256,10 +260,11 @@ func ImportServer(payload ImportServerPayload) (*ServerInstance, error) {
 	var isValidJar bool
 	var hasRunScript bool
 	var detectedType ServerType = Vanilla
-	
+	var matchedJarName string
+
 	for _, f := range files {
 		name := strings.ToLower(f.Name())
-		
+
 		if name == "run.bat" || name == "run.sh" || name == "start.bat" || name == "start.sh" {
 			hasRunScript = true
 			content, _ := os.ReadFile(filepath.Join(absPath, f.Name()))
@@ -272,25 +277,30 @@ func ImportServer(payload ImportServerPayload) (*ServerInstance, error) {
 			detectedType = Quilt
 			if strings.HasSuffix(name, ".jar") && isMinecraftJar(filepath.Join(absPath, f.Name())) {
 				isValidJar = true
+				matchedJarName = f.Name()
 			}
 		} else if strings.HasPrefix(name, "fabric-server") || name == ".fabric" {
 			detectedType = Fabric
 			if strings.HasSuffix(name, ".jar") && isMinecraftJar(filepath.Join(absPath, f.Name())) {
 				isValidJar = true
+				matchedJarName = f.Name()
 			}
 		} else if strings.HasPrefix(name, "paper") || strings.HasPrefix(name, "patched") {
 			detectedType = Paper
 			if strings.HasSuffix(name, ".jar") && isMinecraftJar(filepath.Join(absPath, f.Name())) {
 				isValidJar = true
+				matchedJarName = f.Name()
 			}
 		} else if strings.HasPrefix(name, "spigot") {
 			detectedType = Spigot
 			if strings.HasSuffix(name, ".jar") && isMinecraftJar(filepath.Join(absPath, f.Name())) {
 				isValidJar = true
+				matchedJarName = f.Name()
 			}
 		} else if name == "server.jar" || strings.HasSuffix(name, ".jar") {
 			if isMinecraftJar(filepath.Join(absPath, f.Name())) {
 				isValidJar = true
+				matchedJarName = f.Name()
 				if detectedType == Vanilla && strings.Contains(name, "forge") {
 					detectedType = Forge
 				}
@@ -302,17 +312,40 @@ func ImportServer(payload ImportServerPayload) (*ServerInstance, error) {
 		return nil, fmt.Errorf("no valid minecraft server jars or run scripts found in directory")
 	}
 
+	// Try to find any jar to detect the version if matchedJarName is still empty
+	if matchedJarName == "" {
+		for _, f := range files {
+			if strings.HasSuffix(strings.ToLower(f.Name()), ".jar") {
+				path := filepath.Join(absPath, f.Name())
+				if isMinecraftJar(path) {
+					matchedJarName = f.Name()
+					break
+				}
+			}
+		}
+	}
+
+	detectedVersion := "1.20.4" // A clean, default fallback version rather than "imported" so searches work immediately
+	if matchedJarName != "" {
+		if ver := detectMinecraftVersion(filepath.Join(absPath, matchedJarName)); ver != "" {
+			detectedVersion = ver
+		}
+	}
+
 	// mark existence of critical files like eula.txt (or attempt to create eula.txt if absent)
 	if !utils.FileExists(filepath.Join(absPath, "eula.txt")) {
 		os.WriteFile(filepath.Join(absPath, "eula.txt"), []byte("eula=true\n"), 0644)
 	}
+
+	// Ensure mods/ and plugins/ folders exist in the imported server directory
+	EnsureContentDirs(absPath)
 
 	// Create a safe ID slug
 	name := payload.Name
 	if name == "" {
 		name = filepath.Base(absPath)
 	}
-	
+
 	safeName := strings.ToLower(name)
 	safeName = strings.ReplaceAll(safeName, " ", "-")
 	var sb strings.Builder
@@ -351,7 +384,7 @@ func ImportServer(payload ImportServerPayload) (*ServerInstance, error) {
 	inst := &ServerInstance{
 		ID:        id,
 		Name:      name,
-		Version:   "imported",
+		Version:   detectedVersion,
 		Type:      detectedType,
 		Path:      absPath, // Use external path
 		Status:    "offline",
@@ -454,6 +487,12 @@ func UpdateServerConfig(payload UpdateConfigPayload) error {
 	inst.MemoryMB = payload.MemoryMB
 	inst.Port = payload.Port
 	inst.Watchdog = payload.Watchdog
+	if payload.Version != "" {
+		inst.Version = payload.Version
+	}
+	if payload.Type != "" {
+		inst.Type = ServerType(payload.Type)
+	}
 
 	// Save server properties file
 	propsFile := filepath.Join(inst.Path, "server.properties")
@@ -635,4 +674,58 @@ func isMinecraftJar(jarPath string) bool {
 		}
 	}
 	return false
+}
+
+// detectMinecraftVersion tries to extract the Minecraft version from a JAR file name or its internal version files.
+func detectMinecraftVersion(jarPath string) string {
+	// 1. Try filename regex first
+	baseName := filepath.Base(jarPath)
+	re := regexp.MustCompile(`1\.\d{1,2}(?:\.\d{1,2})?`)
+	if match := re.FindString(baseName); match != "" {
+		return match
+	}
+
+	// 2. Open zip and scan for files
+	r, err := zip.OpenReader(jarPath)
+	if err != nil {
+		return ""
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		// Look for version.json at the root
+		if f.Name == "version.json" {
+			rc, err := f.Open()
+			if err == nil {
+				defer rc.Close()
+				var vData struct {
+					ID   string `json:"id"`
+					Name string `json:"name"`
+				}
+				if err := json.NewDecoder(rc).Decode(&vData); err == nil {
+					if vData.ID != "" {
+						return vData.ID
+					}
+					if vData.Name != "" {
+						return vData.Name
+					}
+				}
+			}
+		}
+		// Look for patch.properties
+		if strings.HasSuffix(f.Name, "patch.properties") {
+			rc, err := f.Open()
+			if err == nil {
+				defer rc.Close()
+				content, _ := io.ReadAll(rc)
+				for _, line := range strings.Split(string(content), "\n") {
+					line = strings.TrimSpace(line)
+					if strings.HasPrefix(line, "version=") {
+						return strings.TrimSpace(strings.TrimPrefix(line, "version="))
+					}
+				}
+			}
+		}
+	}
+	return ""
 }

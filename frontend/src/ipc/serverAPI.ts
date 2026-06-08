@@ -1,4 +1,4 @@
-import type { ServerInstance, JavaInstall, ServerType } from "./types";
+import type { ServerInstance, JavaInstall, ServerType, ContentItem, ModSearchResult, AppSettings } from "./types";
 
 // Type for the Wails Go App bindings and runtime helper
 declare global {
@@ -36,6 +36,31 @@ declare global {
           GetServerResources(id: string): Promise<{ cpuPercent: number; memoryMB: number; uptime: number }>;
           SubscribeConsole(id: string): Promise<void>;
           UnsubscribeConsole(id: string): Promise<void>;
+          // Content management
+          ListContent(id: string, contentType: string): Promise<ContentItem[]>;
+          AddContent(id: string, srcPath: string, contentType: string): Promise<ContentItem>;
+          RemoveContent(id: string, fileName: string, contentType: string): Promise<void>;
+          ToggleContent(id: string, fileName: string, contentType: string, enabled: boolean): Promise<void>;
+          ApplyModpack(id: string, zipPath: string): Promise<{ name: string; version: string; source: string }>;
+          BrowseForJar(): Promise<string>;
+          BrowseForModpackZip(): Promise<string>;
+          // Remote mod search
+          SearchModrinth(query: string, projectType: string, loader: string, gameVersion: string): Promise<ModSearchResult[]>;
+          BrowseModrinth(projectType: string, loader: string, gameVersion: string): Promise<ModSearchResult[]>;
+          InstallModrinthMod(serverID: string, projectID: string, loader: string, gameVersion: string, contentType: string): Promise<ContentItem>;
+          SearchCurseForge(query: string, classID: number, loader: string, gameVersion: string): Promise<ModSearchResult[]>;
+          BrowseCurseForge(classID: number, loader: string, gameVersion: string): Promise<ModSearchResult[]>;
+          InstallCurseForgeFile(serverID: string, modID: number, loader: string, gameVersion: string, contentType: string): Promise<ContentItem>;
+          SearchHangar(query: string): Promise<ModSearchResult[]>;
+          BrowseHangar(): Promise<ModSearchResult[]>;
+          InstallHangarPlugin(serverID: string, slug: string, mcVersion: string): Promise<ContentItem>;
+          SearchSpiget(query: string): Promise<ModSearchResult[]>;
+          BrowseSpiget(): Promise<ModSearchResult[]>;
+          InstallSpigetPlugin(serverID: string, resourceID: number): Promise<ContentItem>;
+          // App settings
+          GetAppSettings(): Promise<AppSettings>;
+          SaveAppSettings(settings: AppSettings): Promise<void>;
+          ValidateCurseForgeKey(apiKey: string): Promise<void>;
         };
       };
     };
@@ -103,6 +128,8 @@ export async function updateServerConfig(payload: {
   port: number;
   watchdog: boolean;
   rawProps: string;
+  version: string;
+  type: string;
 }): Promise<{ result: string }> {
   await window.go.main.App.UpdateServerConfig(payload);
   return { result: "updated" };
@@ -148,3 +175,98 @@ export function offConsoleLog(id: string): void {
     window.runtime.EventsOff(`console-log-${id}`);
   }
 }
+
+// ---- Content Management ----
+
+export async function listContent(id: string, contentType: string): Promise<ContentItem[]> {
+  return window.go.main.App.ListContent(id, contentType);
+}
+
+export async function addContent(id: string, srcPath: string, contentType: string): Promise<ContentItem> {
+  return window.go.main.App.AddContent(id, srcPath, contentType);
+}
+
+export async function removeContent(id: string, fileName: string, contentType: string): Promise<void> {
+  return window.go.main.App.RemoveContent(id, fileName, contentType);
+}
+
+export async function toggleContent(id: string, fileName: string, contentType: string, enabled: boolean): Promise<void> {
+  return window.go.main.App.ToggleContent(id, fileName, contentType, enabled);
+}
+
+export async function applyModpack(id: string, zipPath: string): Promise<{ name: string; version: string; source: string }> {
+  return window.go.main.App.ApplyModpack(id, zipPath);
+}
+
+export async function browseForJar(): Promise<string> {
+  return window.go.main.App.BrowseForJar();
+}
+
+export async function browseForModpackZip(): Promise<string> {
+  return window.go.main.App.BrowseForModpackZip();
+}
+
+// ---- Remote Mod Search ----
+
+export async function searchModrinth(query: string, projectType: string, loader: string, gameVersion: string): Promise<ModSearchResult[]> {
+  return window.go.main.App.SearchModrinth(query, projectType, loader, gameVersion);
+}
+
+export async function browseModrinth(projectType: string, loader: string, gameVersion: string): Promise<ModSearchResult[]> {
+  return window.go.main.App.BrowseModrinth(projectType, loader, gameVersion);
+}
+
+export async function installModrinthMod(serverID: string, projectID: string, loader: string, gameVersion: string, contentType: string): Promise<ContentItem> {
+  return window.go.main.App.InstallModrinthMod(serverID, projectID, loader, gameVersion, contentType);
+}
+
+export async function searchCurseForge(query: string, classID: number, loader: string, gameVersion: string): Promise<ModSearchResult[]> {
+  return window.go.main.App.SearchCurseForge(query, classID, loader, gameVersion);
+}
+
+export async function browseCurseForge(classID: number, loader: string, gameVersion: string): Promise<ModSearchResult[]> {
+  return window.go.main.App.BrowseCurseForge(classID, loader, gameVersion);
+}
+
+export async function installCurseForgeFile(serverID: string, modID: number, loader: string, gameVersion: string, contentType: string): Promise<ContentItem> {
+  return window.go.main.App.InstallCurseForgeFile(serverID, modID, loader, gameVersion, contentType);
+}
+
+export async function searchHangar(query: string): Promise<ModSearchResult[]> {
+  return window.go.main.App.SearchHangar(query);
+}
+
+export async function browseHangar(): Promise<ModSearchResult[]> {
+  return window.go.main.App.BrowseHangar();
+}
+
+export async function installHangarPlugin(serverID: string, slug: string, mcVersion: string): Promise<ContentItem> {
+  return window.go.main.App.InstallHangarPlugin(serverID, slug, mcVersion);
+}
+
+export async function searchSpiget(query: string): Promise<ModSearchResult[]> {
+  return window.go.main.App.SearchSpiget(query);
+}
+
+export async function browseSpiget(): Promise<ModSearchResult[]> {
+  return window.go.main.App.BrowseSpiget();
+}
+
+export async function installSpigetPlugin(serverID: string, resourceID: number): Promise<ContentItem> {
+  return window.go.main.App.InstallSpigetPlugin(serverID, resourceID);
+}
+
+// ---- App Settings ----
+
+export async function getAppSettings(): Promise<AppSettings> {
+  return window.go.main.App.GetAppSettings();
+}
+
+export async function saveAppSettings(settings: AppSettings): Promise<void> {
+  return window.go.main.App.SaveAppSettings(settings);
+}
+
+export async function validateCurseForgeKey(apiKey: string): Promise<void> {
+  return window.go.main.App.ValidateCurseForgeKey(apiKey);
+}
+

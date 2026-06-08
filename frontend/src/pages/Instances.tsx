@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import type { ServerInstance } from "../ipc/types";
-import { Terminal, Settings, Trash2, Cpu, FolderClosed } from "lucide-react";
+import { Terminal, Settings, Trash2, Cpu, FolderClosed, Puzzle } from "lucide-react";
 import Console from "../components/Console";
 import ConfigEditor from "../components/ConfigEditor";
 import ResourceMonitor from "../components/ResourceMonitor";
+import InstanceContentManager from "../components/ContentManager";
 import { deleteServer, startServer, stopServer, restartServer } from "../ipc/serverAPI";
 
 interface InstancesProps {
@@ -17,7 +18,7 @@ export default function Instances({ servers, refreshServers, initialSelectedId, 
   const [selectedServerId, setSelectedServerId] = useState<string>(
     initialSelectedId || (servers.length > 0 ? servers[0].id : "")
   );
-  const [activeTab, setActiveTab] = useState<"terminal" | "config">("terminal");
+  const [activeTab, setActiveTab] = useState<"terminal" | "config" | "mods">("terminal");
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [serverActionLoading, setServerActionLoading] = useState(false);
 
@@ -217,6 +218,13 @@ export default function Instances({ servers, refreshServers, initialSelectedId, 
                 <Settings size={16} /> Settings
               </button>
               <button
+                onClick={() => setActiveTab("mods")}
+                className={activeTab === "mods" ? "button-primary" : "button-normal"}
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: 0 }}
+              >
+                <Puzzle size={16} /> Mods & Plugins
+              </button>
+              <button
                 onClick={handleDelete}
                 disabled={deleteLoading}
                 className="button-tertiary"
@@ -237,6 +245,8 @@ export default function Instances({ servers, refreshServers, initialSelectedId, 
           {/* Tab Content */}
           {activeTab === "terminal" ? (
             <Console key={selectedServer.id} serverId={selectedServer.id} serverName={selectedServer.name} />
+          ) : activeTab === "mods" ? (
+            <InstanceContentManager key={selectedServer.id} server={selectedServer} />
           ) : (
             <ConfigEditor key={selectedServer.id} server={selectedServer} refreshServers={refreshServers} />
           )}

@@ -17,6 +17,8 @@ export default function ConfigEditor({ server, refreshServers }: ConfigEditorPro
   const [port, setPort] = useState(server.port);
   const [watchdog, setWatchdog] = useState(server.watchdog);
   const [javaPath, setJavaPath] = useState(server.javaPath);
+  const [version, setVersion] = useState(server.version);
+  const [type, setType] = useState(server.type);
   
   // Java Autocomplete List
   const [javas, setJavas] = useState<{ path: string; version: string }[]>([]);
@@ -34,6 +36,8 @@ export default function ConfigEditor({ server, refreshServers }: ConfigEditorPro
     setPort(server.port);
     setWatchdog(server.watchdog);
     setJavaPath(server.javaPath);
+    setVersion(server.version);
+    setType(server.type);
     
     // Fetch available java environments
     detectJava().then(setJavas).catch(console.error);
@@ -65,6 +69,8 @@ export default function ConfigEditor({ server, refreshServers }: ConfigEditorPro
         port: Number(port),
         watchdog,
         rawProps: activeSubTab === "properties" ? rawProperties : "",
+        version,
+        type,
       });
 
       setSaveSuccess(true);
@@ -166,6 +172,36 @@ export default function ConfigEditor({ server, refreshServers }: ConfigEditorPro
                     </option>
                   ))}
                   <option value="java">Default System (java)</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <label style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--text-muted)" }}>
+                  Minecraft Version
+                </label>
+                <input
+                  type="text"
+                  value={version}
+                  onChange={(e) => setVersion(e.target.value)}
+                  placeholder="e.g. 1.20.4"
+                  required
+                />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <label style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--text-muted)" }}>
+                  Server Loader / Type
+                </label>
+                <select value={type} onChange={(e) => setType(e.target.value as any)}>
+                  <option value="vanilla">Vanilla (Official)</option>
+                  <option value="spigot">Spigot (Plugins)</option>
+                  <option value="paper">Paper (Optimized Plugins)</option>
+                  <option value="fabric">Fabric (Mods)</option>
+                  <option value="quilt">Quilt (Mods)</option>
+                  <option value="forge">Forge (Mods)</option>
+                  <option value="neoforge">NeoForge (Mods)</option>
                 </select>
               </div>
             </div>

@@ -13,18 +13,50 @@ const (
 )
 
 type ServerInstance struct {
-	ID         string     `json:"id"`
-	Name       string     `json:"name"`
-	Version    string     `json:"version"`
-	Type       ServerType `json:"type"`
-	Path       string     `json:"path"`
-	Status     string     `json:"status"`
-	JavaPath   string     `json:"javaPath"`
-	MemoryMB   int        `json:"memoryMB"`
-	World      string     `json:"world"`
-	IPAddress  string     `json:"ipAddress"`
-	Port       int        `json:"port"`
-	Watchdog   bool       `json:"watchdog"`
+	ID         string       `json:"id"`
+	Name       string       `json:"name"`
+	Version    string       `json:"version"`
+	Type       ServerType   `json:"type"`
+	Path       string       `json:"path"`
+	Status     string       `json:"status"`
+	JavaPath   string       `json:"javaPath"`
+	MemoryMB   int          `json:"memoryMB"`
+	World      string       `json:"world"`
+	IPAddress  string       `json:"ipAddress"`
+	Port       int          `json:"port"`
+	Watchdog   bool         `json:"watchdog"`
+	Modpack    *ModpackMeta `json:"modpack,omitempty"`
+}
+
+// ContentItem represents a single mod or plugin JAR inside a server directory.
+type ContentItem struct {
+	Name     string `json:"name"`
+	FileName string `json:"fileName"`
+	Enabled  bool   `json:"enabled"`
+	SizeKB   int64  `json:"sizeKB"`
+	Type     string `json:"type"` // "mod" | "plugin"
+}
+
+// ModpackMeta stores information about an applied modpack.
+type ModpackMeta struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	Source  string `json:"source"` // "local" | "modrinth" | "curseforge"
+}
+
+// ModSearchResult is a unified search result from Modrinth or CurseForge.
+type ModSearchResult struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Author      string `json:"author"`
+	IconURL     string `json:"iconUrl"`
+	Downloads   int64  `json:"downloads"`
+	Source      string `json:"source"` // "modrinth" | "curseforge"
+	// For download resolution
+	VersionID   string `json:"versionId"`
+	DownloadURL string `json:"downloadUrl"`
+	FileName    string `json:"fileName"`
 }
 
 type CreateServerPayload struct {
@@ -48,4 +80,6 @@ type UpdateConfigPayload struct {
 	Port      int    `json:"port"`
 	Watchdog  bool   `json:"watchdog"`
 	RawProps  string `json:"rawProps"` // For raw server.properties editing
+	Version   string `json:"version"`
+	Type      string `json:"type"`
 }
