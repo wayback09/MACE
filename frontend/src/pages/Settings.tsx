@@ -1,11 +1,18 @@
 import { useState, useEffect } from "react";
-import { Cpu, RotateCw, Database, Terminal, Shield } from "lucide-react";
-import { detectJava } from "../ipc/serverAPI";
+import { Cpu, RotateCw, Database, Terminal, Shield, Key, CheckCircle, AlertCircle } from "lucide-react";
+import { detectJava, getAppSettings, saveAppSettings, validateCurseForgeKey } from "../ipc/serverAPI";
 import type { JavaInstall } from "../ipc/types";
 
 export default function Settings() {
   const [javas, setJavas] = useState<JavaInstall[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // CurseForge key state
+  const [cfKey, setCfKey] = useState("");
+  const [cfSaving, setCfSaving] = useState(false);
+  const [cfValidating, setCfValidating] = useState(false);
+  const [cfStatus, setCfStatus] = useState<"idle" | "valid" | "invalid">("idle");
+  const [cfMessage, setCfMessage] = useState("");
 
   const runDetection = () => {
     setLoading(true);
@@ -14,7 +21,47 @@ export default function Settings() {
       .catch((err) => { console.error("Failed to detect java environments", err); setLoading(false); });
   };
 
-  useEffect(() => { runDetection(); }, []);
+  useEffect(() => {
+    runDetection();
+    getAppSettings().then((s) => {
+      if (s?.curseForgeApiKey) {
+        setCfKey(s.curseForgeApiKey);
+        setCfStatus("valid");
+      }
+    }).catch(() => {});
+  }, []);
+
+  const handleSaveCfKey = async () => {
+    setCfSaving(true);
+    setCfMessage("");
+    try {
+      await saveAppSettings({ curseForgeApiKey: cfKey });
+      setCfStatus("idle");
+      setCfMessage("API key saved.");
+    } catch (e: any) {
+      setCfMessage("Failed to save: " + (e.message || e));
+    } finally {
+      setCfSaving(false);
+    }
+  };
+
+  const handleValidateCfKey = async () => {
+    if (!cfKey.trim()) return;
+    setCfValidating(true);
+    setCfMessage("");
+    try {
+      await validateCurseForgeKey(cfKey);
+      setCfStatus("valid");
+      setCfMessage("API key is valid! ✓");
+      // Also save on successful validation
+      await saveAppSettings({ curseForgeApiKey: cfKey });
+    } catch (e: any) {
+      setCfStatus("invalid");
+      setCfMessage(e.message || "Invalid API key");
+    } finally {
+      setCfValidating(false);
+    }
+  };
 
   return (
     <div style={{ maxWidth: "700px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "2.5rem" }}>
@@ -22,6 +69,56 @@ export default function Settings() {
       <div>
         <h1 style={{ fontSize: "2rem", fontWeight: 700, marginBottom: "0.5rem" }}>Global Settings</h1>
         <p style={{ color: "var(--accent-color)", margin: 0 }}>Manage global server configurations and system dependencies.</p>
+      </div>
+
+      {/* CurseForge API Key Card */}
+      <div className="card" style={{ padding: "1.75rem", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <Key size={18} style={{ color: "#f16436" }} />
+          <h2 style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0 }}>CurseForge API Key</h2>
+          {cfStatus === "valid" && <CheckCircle size={16} color="var(--success-color)" />}
+          {cfStatus === "invalid" && <AlertCircle size={16} color="var(--error-color)" />}
+        </div>
+
+        <p style={{ fontSize: "0.85rem", color: "var(--accent-color)", lineHeight: "1.5", margin: 0 }}>
+          Required to search and install mods from CurseForge. Modrinth works without a key.{" "}
+          <a href="https://console.curseforge.com/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--btn-primary-inner-color)" }}>
+            Get a free key at console.curseforge.com →
+          </a>
+        </p>
+
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <input
+            className="form-input"
+            type="password"
+            placeholder="$2a$10$..."
+            value={cfKey}
+            onChange={(e) => { setCfKey(e.target.value); setCfStatus("idle"); }}
+            style={{ flex: 1, height: "40px", fontFamily: "monospace", fontSize: "0.85rem" }}
+          />
+          <button
+            className="button-normal"
+            onClick={handleValidateCfKey}
+            disabled={cfValidating || !cfKey.trim()}
+            style={{ margin: 0, padding: "0 1rem", fontSize: "0.8rem", whiteSpace: "nowrap" }}
+          >
+            {cfValidating ? "Testing…" : "Test & Save"}
+          </button>
+          <button
+            className="button-primary"
+            onClick={handleSaveCfKey}
+            disabled={cfSaving || !cfKey.trim()}
+            style={{ margin: 0, padding: "0 1rem", fontSize: "0.8rem", whiteSpace: "nowrap" }}
+          >
+            {cfSaving ? "Saving…" : "Save"}
+          </button>
+        </div>
+
+        {cfMessage && (
+          <div style={{ fontSize: "0.82rem", color: cfStatus === "valid" ? "var(--success-color)" : cfStatus === "invalid" ? "var(--error-color)" : "var(--accent-color)" }}>
+            {cfMessage}
+          </div>
+        )}
       </div>
 
       {/* Java Runtimes Card */}
@@ -47,7 +144,6 @@ export default function Settings() {
           Use these exact paths inside your server instance configurations.
         </p>
 
-        {/* Java list */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
           {javas.length === 0 ? (
             <p style={{ color: "var(--accent-color)", fontSize: "0.85rem", fontStyle: "italic", margin: 0 }}>
