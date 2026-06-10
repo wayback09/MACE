@@ -1,0 +1,181 @@
+package servermanager
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestBackups(t *testing.T) {
+	// Create "servers" folder in current directory so GetServerRoot() finds it
+	err := os.MkdirAll("servers", 0755)
+	if err != nil {
+		t.Fatalf("failed to create servers dir: %v", err)
+	}
+	defer os.RemoveAll("servers")
+
+	serverId := "test-server-123"
+	serverPath, err := filepath.Abs(filepath.Join("servers", serverId))
+	if err != nil {
+		t.Fatalf("failed to get absolute path: %v", err)
+	}
+
+	err = os.MkdirAll(serverPath, 0755)
+	if err != nil {
+		t.Fatalf("failed to create server path: %v", err)
+	}
+
+	// Create world directory and files
+	worldDir := filepath.Join(serverPath, "world")
+	err = os.MkdirAll(filepath.Join(worldDir, "region"), 0755)
+	if err != nil {
+		t.Fatalf("failed to create world dir: %v", err)
+	}
+	err = os.WriteFile(filepath.Join(worldDir, "level.dat"), []byte("mock-level-data"), 0644)
+	if err != nil {
+		t.Fatalf("failed to write level.dat: %v", err)
+	}
+	err = os.WriteFile(filepath.Join(worldDir, "region", "r.0.0.mca"), []byte("mock-region-data"), 0644)
+	if err != nil {
+		t.Fatalf("failed to write region file: %v", err)
+	}
+
+	// Create config files
+	err = os.WriteFile(filepath.Join(serverPath, "server.properties"), []byte("motd=Test Server"), 0644)
+	if err != nil {
+		t.Fatalf("failed to write server.properties: %v", err)
+	}
+	err = os.WriteFile(filepath.Join(serverPath, "whitelist.json"), []byte("[]"), 0644)
+	if err != nil {
+		t.Fatalf("failed to write whitelist.json: %v", err)
+	}
+
+	// Write metadata.json
+	inst := ServerInstance{
+		ID:       serverId,
+		Name:     "Test Server",
+		Version:  "1.20.4",
+		Type:     Vanilla,
+		Path:     serverPath,
+		Status:   "offline",
+		World:    "world",
+		MemoryMB: 2048,
+	}
+	metaBytes, err := json.Marshal(inst)
+	if err != nil {
+		t.Fatalf("failed to marshal server metadata: %v", err)
+	}
+	err = os.WriteFile(filepath.Join(serverPath, "metadata.json"), metaBytes, 0644)
+	if err != nil {
+		t.Fatalf("failed to write metadata.json: %v", err)
+	}
+
+	// Test 1: Create Backup (default path)
+	backupItem, err := CreateBackup(serverId)
+	if err != nil {
+		t.Fatalf("CreateBackup failed: %v", err)
+	}
+
+	if backupItem.FileName == "" {
+		t.Errorf("expected backup file name to be set, got empty")
+	}
+
+	// Test 2: List Backups
+	backups, err := ListBackups(serverId)
+	if err != nil {
+		t.Fatalf("ListBackups failed: %v", err)
+	}
+	if len(backups) != 1 {
+		t.Errorf("expected 1 backup, got %d", len(backups))
+	} else if backups[0].FileName != backupItem.FileName {
+		t.Errorf("expected backup file name %q, got %q", backupItem.FileName, backups[0].FileName)
+	}
+
+	// Modify server.properties and world file to test restore
+	err = os.WriteFile(filepath.Join(serverPath, "server.properties"), []byte("motd=Modified Motd"), 0644)
+	if err != nil {
+		t.Fatalf("failed to write modified server.properties: %v", err)
+	}
+	err = os.WriteFile(filepath.Join(worldDir, "level.dat"), []byte("modified-level-data"), 0644)
+	if err != nil {
+		t.Fatalf("failed to write modified level.dat: %v", err)
+	}
+
+	// Test 3: Restore Backup
+	err = RestoreBackup(serverId, backupItem.FileName)
+	if err != nil {
+		t.Fatalf("RestoreBackup failed: %v", err)
+	}
+
+	// Verify content is restored
+	propContent, err := os.ReadFile(filepath.Join(serverPath, "server.properties"))
+	if err != nil {
+		t.Fatalf("failed to read server.properties after restore: %v", err)
+	}
+	if string(propContent) != "motd=Test Server" {
+		t.Errorf("expected motd=Test Server, got %q", string(propContent))
+	}
+
+	levelContent, err := os.ReadFile(filepath.Join(worldDir, "level.dat"))
+	if err != nil {
+		t.Fatalf("failed to read level.dat after restore: %v", err)
+	}
+	if string(levelContent) != "mock-level-data" {
+		t.Errorf("expected mock-level-data, got %q", string(levelContent))
+	}
+
+	// Test 4: Custom Backup Path
+	customBackupDir, err := filepath.Abs("custom_backups")
+	if err != nil {
+		t.Fatalf("failed to get absolute path for custom backups: %v", err)
+	}
+	err = os.MkdirAll(customBackupDir, 0755)
+	if err != nil {
+		t.Fatalf("failed to create custom backups dir: %v", err)
+	}
+	defer os.RemoveAll(customBackupDir)
+
+	inst.BackupPath = customBackupDir
+	metaBytes, err = json.Marshal(inst)
+	if err != nil {
+		t.Fatalf("failed to marshal server metadata with custom path: %v", err)
+	}
+	err = os.WriteFile(filepath.Join(serverPath, "metadata.json"), metaBytes, 0644)
+	if err != nil {
+		t.Fatalf("failed to write metadata.json with custom path: %v", err)
+	}
+
+	customBackupItem, err := CreateBackup(serverId)
+	if err != nil {
+		t.Fatalf("CreateBackup with custom path failed: %v", err)
+	}
+
+	customBackups, err := ListBackups(serverId)
+	if err != nil {
+		t.Fatalf("ListBackups with custom path failed: %v", err)
+	}
+	if len(customBackups) != 1 {
+		t.Errorf("expected 1 custom backup, got %d", len(customBackups))
+	}
+
+	// Verify file exists in custom dir
+	customZipPath := filepath.Join(customBackupDir, customBackupItem.FileName)
+	if _, err := os.Stat(customZipPath); os.IsNotExist(err) {
+		t.Errorf("expected backup zip file to exist at %s, but it does not", customZipPath)
+	}
+
+	// Test 5: Delete Backup
+	err = DeleteBackup(serverId, customBackupItem.FileName)
+	if err != nil {
+		t.Fatalf("DeleteBackup failed: %v", err)
+	}
+
+	customBackupsPostDelete, err := ListBackups(serverId)
+	if err != nil {
+		t.Fatalf("ListBackups after delete failed: %v", err)
+	}
+	if len(customBackupsPostDelete) != 0 {
+		t.Errorf("expected 0 custom backups, got %d", len(customBackupsPostDelete))
+	}
+}

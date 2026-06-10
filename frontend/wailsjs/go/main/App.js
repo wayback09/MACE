@@ -14,6 +14,10 @@ export function BrowseCurseForge(arg1, arg2, arg3) {
   return window['go']['main']['App']['BrowseCurseForge'](arg1, arg2, arg3);
 }
 
+export function BrowseForBackupDir() {
+  return window['go']['main']['App']['BrowseForBackupDir']();
+}
+
 export function BrowseForJar() {
   return window['go']['main']['App']['BrowseForJar']();
 }
@@ -38,8 +42,16 @@ export function BrowseSpiget() {
   return window['go']['main']['App']['BrowseSpiget']();
 }
 
+export function CreateBackup(arg1) {
+  return window['go']['main']['App']['CreateBackup'](arg1);
+}
+
 export function CreateServer(arg1) {
   return window['go']['main']['App']['CreateServer'](arg1);
+}
+
+export function DeleteBackup(arg1, arg2) {
+  return window['go']['main']['App']['DeleteBackup'](arg1, arg2);
 }
 
 export function DeleteServer(arg1) {
@@ -48,6 +60,10 @@ export function DeleteServer(arg1) {
 
 export function DetectJava() {
   return window['go']['main']['App']['DetectJava']();
+}
+
+export function GetActivePlayers(arg1) {
+  return window['go']['main']['App']['GetActivePlayers'](arg1);
 }
 
 export function GetAppSettings() {
@@ -60,6 +76,10 @@ export function GetAvailableVersions() {
 
 export function GetConsoleLogs(arg1) {
   return window['go']['main']['App']['GetConsoleLogs'](arg1);
+}
+
+export function GetPlayerRoles(arg1) {
+  return window['go']['main']['App']['GetPlayerRoles'](arg1);
 }
 
 export function GetServerProperties(arg1) {
@@ -90,6 +110,10 @@ export function InstallSpigetPlugin(arg1, arg2) {
   return window['go']['main']['App']['InstallSpigetPlugin'](arg1, arg2);
 }
 
+export function ListBackups(arg1) {
+  return window['go']['main']['App']['ListBackups'](arg1);
+}
+
 export function ListContent(arg1, arg2) {
   return window['go']['main']['App']['ListContent'](arg1, arg2);
 }
@@ -104,6 +128,10 @@ export function RemoveContent(arg1, arg2, arg3) {
 
 export function RestartServer(arg1) {
   return window['go']['main']['App']['RestartServer'](arg1);
+}
+
+export function RestoreBackup(arg1, arg2) {
+  return window['go']['main']['App']['RestoreBackup'](arg1, arg2);
 }
 
 export function SaveAppSettings(arg1) {

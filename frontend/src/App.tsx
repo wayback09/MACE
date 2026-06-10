@@ -4,6 +4,7 @@ import Instances from "./pages/Instances";
 import CreateServer from "./pages/CreateServer";
 import ImportServer from "./pages/ImportServer";
 import Settings from "./pages/Settings";
+import CrashDialog from "./components/CrashDialog";
 import { Server, PlusCircle, FolderOpen, Settings as SettingsIcon, LayoutDashboard, Cpu, Database } from "lucide-react";
 import { listServers, detectJava } from "./ipc/serverAPI";
 import type { ServerInstance } from "./ipc/types";
@@ -312,6 +313,7 @@ export default function App() {
           renderContent()
         )}
       </main>
+      <CrashDialog />
     </div>
   );
 }

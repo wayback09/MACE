@@ -38,7 +38,7 @@ func IsRunning(id string) bool {
 }
 
 // StartServer launches the Minecraft server jar/scripts.
-func StartServer(id string, dir string, javaPath string, memoryMB int, watchdogEnabled bool, statusCallback func(string, string)) (string, error) {
+func StartServer(id string, dir string, javaPath string, memoryMB int, watchdogEnabled bool, statusCallback func(string, string), crashCallback func(string, string, string)) (string, error) {
 	if IsRunning(id) {
 		return "running", nil
 	}
@@ -158,7 +158,7 @@ func StartServer(id string, dir string, javaPath string, memoryMB int, watchdogE
 	startTimes[id] = time.Now()
 
 	// Start Watchdog monitor
-	go RunWatchdog(id, cmd, dir, javaPath, memoryMB, watchdogEnabled, statusCallback)
+	go RunWatchdog(id, cmd, dir, javaPath, memoryMB, watchdogEnabled, statusCallback, crashCallback)
 
 	return "started", nil
 }

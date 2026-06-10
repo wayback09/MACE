@@ -1,7 +1,7 @@
 import { useState, useEffect, type FormEvent } from "react";
 import type { ServerInstance } from "../ipc/types";
-import { Save, AlertCircle, FileText, Settings } from "lucide-react";
-import { getServerProperties, updateServerConfig, detectJava } from "../ipc/serverAPI";
+import { Save, AlertCircle, FileText, Settings, FolderOpen } from "lucide-react";
+import { getServerProperties, updateServerConfig, detectJava, browseForBackupDir } from "../ipc/serverAPI";
 
 interface ConfigEditorProps {
   server: ServerInstance;
@@ -19,6 +19,7 @@ export default function ConfigEditor({ server, refreshServers }: ConfigEditorPro
   const [javaPath, setJavaPath] = useState(server.javaPath);
   const [version, setVersion] = useState(server.version);
   const [type, setType] = useState(server.type);
+  const [backupPath, setBackupPath] = useState(server.backupPath || "");
   
   // Java Autocomplete List
   const [javas, setJavas] = useState<{ path: string; version: string }[]>([]);
@@ -38,6 +39,7 @@ export default function ConfigEditor({ server, refreshServers }: ConfigEditorPro
     setJavaPath(server.javaPath);
     setVersion(server.version);
     setType(server.type);
+    setBackupPath(server.backupPath || "");
     
     // Fetch available java environments
     detectJava().then(setJavas).catch(console.error);
@@ -71,6 +73,7 @@ export default function ConfigEditor({ server, refreshServers }: ConfigEditorPro
         rawProps: activeSubTab === "properties" ? rawProperties : "",
         version,
         type,
+        backupPath,
       });
 
       setSaveSuccess(true);
@@ -204,6 +207,41 @@ export default function ConfigEditor({ server, refreshServers }: ConfigEditorPro
                   <option value="neoforge">NeoForge (Mods)</option>
                 </select>
               </div>
+            </div>
+
+            {/* Backup Directory */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              <label style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--text-muted)" }}>
+                Backup Directory
+              </label>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <input
+                  type="text"
+                  value={backupPath}
+                  onChange={(e) => setBackupPath(e.target.value)}
+                  placeholder="Default: server/backups/"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  className="button-normal"
+                  onClick={async () => {
+                    try {
+                      const dir = await browseForBackupDir();
+                      if (dir) setBackupPath(dir);
+                    } catch (err) {
+                      console.error("Failed to select backup directory:", err);
+                      alert("Failed to open directory picker.");
+                    }
+                  }}
+                  style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.4rem", whiteSpace: "nowrap" }}
+                >
+                  <FolderOpen size={14} /> Browse
+                </button>
+              </div>
+              <p style={{ fontSize: "0.7rem", color: "var(--text-muted)", margin: 0, opacity: 0.7 }}>
+                Tip: Use a separate drive or dedicated folder to protect backups from accidental deletion.
+              </p>
             </div>
 
             {/* Watchdog Option */}

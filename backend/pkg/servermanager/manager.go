@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -21,6 +20,9 @@ import (
 var (
 	statuses   = make(map[string]string)
 	statusesMu sync.RWMutex
+
+	// CrashCallback is triggered when a server process exits abnormally
+	CrashCallback func(id string, reason string, resolution string)
 )
 
 // Helper to resolve the root servers directory dynamically
@@ -165,12 +167,11 @@ func CreateServer(payload CreateServerPayload) (*ServerInstance, error) {
 		return nil, err
 	}
 
-	// Find default java
+	// Find correct Java version
+	reqJava := utils.GetRequiredJavaVersion(payload.Version)
 	javaPath := "java"
-	if RequiresJava25(ServerType(payload.Type), payload.Version) {
-		if j25Path, found := utils.FindJava25(); found {
-			javaPath = j25Path
-		}
+	if jPath, found := utils.FindJavaVersion(reqJava); found {
+		javaPath = jPath
 	} else {
 		javas := utils.FindJavaInstallations()
 		if len(javas) > 0 {
@@ -193,18 +194,19 @@ func CreateServer(payload CreateServerPayload) (*ServerInstance, error) {
 	}
 
 	inst := &ServerInstance{
-		ID:        id,
-		Name:      payload.Name,
-		Version:   payload.Version,
-		Type:      ServerType(payload.Type),
-		Path:      serverDir,
-		Status:    "installing",
-		JavaPath:  javaPath,
-		MemoryMB:  payload.MemoryMB,
-		World:     "world",
-		IPAddress: "127.0.0.1",
-		Port:      port,
-		Watchdog:  false,
+		ID:         id,
+		Name:       payload.Name,
+		Version:    payload.Version,
+		Type:       ServerType(payload.Type),
+		Path:       serverDir,
+		Status:     "installing",
+		JavaPath:   javaPath,
+		MemoryMB:   payload.MemoryMB,
+		World:      "world",
+		IPAddress:  "127.0.0.1",
+		Port:       port,
+		Watchdog:   false,
+		BackupPath: payload.BackupPath,
 	}
 
 	if err := SaveServer(inst); err != nil {
@@ -356,11 +358,16 @@ func ImportServer(payload ImportServerPayload) (*ServerInstance, error) {
 	}
 	id := fmt.Sprintf("%s-import-%d", sb.String(), time.Now().Unix()%100000)
 
-	// Java path
+	// Find correct Java version for imported server
+	reqJava := utils.GetRequiredJavaVersion(detectedVersion)
 	javaPath := "java"
-	javas := utils.FindJavaInstallations()
-	if len(javas) > 0 {
-		javaPath = javas[0].Path
+	if jPath, found := utils.FindJavaVersion(reqJava); found {
+		javaPath = jPath
+	} else {
+		javas := utils.FindJavaInstallations()
+		if len(javas) > 0 {
+			javaPath = javas[0].Path
+		}
 	}
 
 	// Try extracting motd and port
@@ -410,17 +417,21 @@ func StartServer(id string) (string, error) {
 		return "", err
 	}
 
-	// Validate Java 25 requirement
-	if RequiresJava25(inst.Type, inst.Version) {
-		currentVer := utils.GetJavaVersion(inst.JavaPath)
-		if !utils.IsJava25(currentVer) {
-			if j25Path, found := utils.FindJava25(); found {
-				inst.JavaPath = j25Path
-				SaveServer(inst)
-				launcher.WriteLog(id, "[MACE] Auto-aligned server Java runtime to Java 25: "+j25Path)
-			} else {
-				return "", fmt.Errorf("this server version requires a Java 25 runtime environment, but only Java %s was configured and no Java 25 was detected on the system", currentVer)
+	// Validate and align Java requirement
+	reqJava := utils.GetRequiredJavaVersion(inst.Version)
+	currentVerStr := utils.GetJavaVersion(inst.JavaPath)
+	currentVer := utils.ParseMajorJavaVersion(currentVerStr)
+
+	if currentVer != reqJava {
+		if alignedPath, found := utils.FindJavaVersion(reqJava); found {
+			inst.JavaPath = alignedPath
+			SaveServer(inst)
+			launcher.WriteLog(id, fmt.Sprintf("[MACE] Auto-aligned server Java runtime to Java %d: %s", reqJava, alignedPath))
+		} else {
+			if currentVer < reqJava {
+				return "", fmt.Errorf("this server requires Java %d+, but is configured to use Java %d (%s) and no compatible Java was found on the system", reqJava, currentVer, currentVerStr)
 			}
+			launcher.WriteLog(id, fmt.Sprintf("[MACE] Warning: Server requires Java %d but is running on Java %d (%s). Proceeding...", reqJava, currentVer, currentVerStr))
 		}
 	}
 
@@ -429,7 +440,7 @@ func StartServer(id string) (string, error) {
 	}
 
 	setStatus(id, "starting")
-	state, err := launcher.StartServer(inst.ID, inst.Path, inst.JavaPath, inst.MemoryMB, inst.Watchdog, statusCallback)
+	state, err := launcher.StartServer(inst.ID, inst.Path, inst.JavaPath, inst.MemoryMB, inst.Watchdog, statusCallback, CrashCallback)
 	if err != nil {
 		setStatus(id, "offline")
 		return "", err
@@ -487,6 +498,7 @@ func UpdateServerConfig(payload UpdateConfigPayload) error {
 	inst.MemoryMB = payload.MemoryMB
 	inst.Port = payload.Port
 	inst.Watchdog = payload.Watchdog
+	inst.BackupPath = payload.BackupPath
 	if payload.Version != "" {
 		inst.Version = payload.Version
 	}
@@ -631,18 +643,6 @@ func GetServerResources(id string) (*launcher.ResourceUsage, error) {
 	return launcher.GetResourceUsage(id)
 }
 
-// RequiresJava25 returns true if the server type or minecraft version requires Java 25.
-func RequiresJava25(serverType ServerType, mcVersion string) bool {
-	parts := strings.Split(mcVersion, ".")
-	if len(parts) == 0 {
-		return false
-	}
-	major, err := strconv.Atoi(parts[0])
-	if err != nil {
-		return false
-	}
-	return major >= 26
-}
 
 // isMinecraftJar performs a lightweight scan of a JAR file to confirm it's a Minecraft server JAR.
 func isMinecraftJar(jarPath string) bool {

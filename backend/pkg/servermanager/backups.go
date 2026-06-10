@@ -1,0 +1,322 @@
+package servermanager
+
+import (
+	"archive/zip"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"time"
+
+	"mace/backend/pkg/launcher"
+	"mace/backend/pkg/utils"
+)
+
+// configFiles lists server configuration files that should be included in backups.
+var configFiles = []string{
+	"server.properties",
+	"banned-players.json",
+	"banned-ips.json",
+	"ops.json",
+	"whitelist.json",
+}
+
+// GetBackupDir returns the resolved backup directory for a server instance.
+// If the user has configured a custom backup path, it is used; otherwise
+// it falls back to <ServerPath>/backups.
+func GetBackupDir(inst *ServerInstance) string {
+	if inst.BackupPath != "" {
+		return inst.BackupPath
+	}
+	return filepath.Join(inst.Path, "backups")
+}
+
+// CreateBackup compresses the world folder and configuration files into a
+// timestamped zip archive inside the backup directory.
+func CreateBackup(id string) (*BackupItem, error) {
+	inst, err := LoadServer(id)
+	if err != nil {
+		return nil, err
+	}
+
+	backupDir := GetBackupDir(inst)
+	if err := utils.EnsureDir(backupDir); err != nil {
+		return nil, fmt.Errorf("failed to create backup directory: %w", err)
+	}
+
+	worldDir := filepath.Join(inst.Path, inst.World)
+	if _, err := os.Stat(worldDir); os.IsNotExist(err) {
+		return nil, fmt.Errorf("world directory '%s' does not exist, nothing to back up", inst.World)
+	}
+
+	timestamp := time.Now().Format("2006-01-02_15-04-05")
+	zipName := fmt.Sprintf("backup_%s_%s.zip", inst.World, timestamp)
+	zipPath := filepath.Join(backupDir, zipName)
+
+	zipFile, err := os.Create(zipPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create backup file: %w", err)
+	}
+	defer zipFile.Close()
+
+	w := zip.NewWriter(zipFile)
+	defer w.Close()
+
+	// Archive world directory
+	err = filepath.Walk(worldDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		relPath, err := filepath.Rel(inst.Path, path)
+		if err != nil {
+			return err
+		}
+		// Use forward slashes inside zip
+		relPath = filepath.ToSlash(relPath)
+
+		if info.IsDir() {
+			_, err := w.Create(relPath + "/")
+			return err
+		}
+
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			return err
+		}
+		header.Name = relPath
+		header.Method = zip.Deflate
+
+		writer, err := w.CreateHeader(header)
+		if err != nil {
+			return err
+		}
+
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+
+		_, err = io.Copy(writer, file)
+		closeErr := file.Close()
+		if err != nil {
+			return err
+		}
+		return closeErr
+	})
+	if err != nil {
+		os.Remove(zipPath)
+		return nil, fmt.Errorf("failed to archive world: %w", err)
+	}
+
+	// Archive config files
+	for _, cfgName := range configFiles {
+		cfgPath := filepath.Join(inst.Path, cfgName)
+		if !utils.FileExists(cfgPath) {
+			continue
+		}
+		info, err := os.Stat(cfgPath)
+		if err != nil {
+			continue
+		}
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			continue
+		}
+		header.Name = cfgName
+		header.Method = zip.Deflate
+
+		writer, err := w.CreateHeader(header)
+		if err != nil {
+			continue
+		}
+		file, err := os.Open(cfgPath)
+		if err != nil {
+			continue
+		}
+		if _, err := io.Copy(writer, file); err != nil {
+			launcher.WriteLog(id, fmt.Sprintf("[MACE] Warning: Failed to archive config file %s: %v", cfgName, err))
+		}
+		file.Close()
+	}
+
+	// Close writer to flush
+	w.Close()
+	zipFile.Close()
+
+	// Get final file size
+	stat, err := os.Stat(zipPath)
+	if err != nil {
+		return nil, err
+	}
+
+	launcher.WriteLog(id, fmt.Sprintf("[MACE] Backup created: %s (%.1f MB)", zipName, float64(stat.Size())/(1024*1024)))
+
+	return &BackupItem{
+		FileName:  zipName,
+		SizeKB:    stat.Size() / 1024,
+		CreatedAt: time.Now().Format(time.RFC3339),
+	}, nil
+}
+
+// ListBackups scans the backup directory and returns all backup archives,
+// sorted newest first.
+func ListBackups(id string) ([]BackupItem, error) {
+	inst, err := LoadServer(id)
+	if err != nil {
+		return nil, err
+	}
+
+	backupDir := GetBackupDir(inst)
+	if _, err := os.Stat(backupDir); os.IsNotExist(err) {
+		return []BackupItem{}, nil
+	}
+
+	entries, err := os.ReadDir(backupDir)
+	if err != nil {
+		return nil, err
+	}
+
+	var items []BackupItem
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".zip") {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		items = append(items, BackupItem{
+			FileName:  entry.Name(),
+			SizeKB:    info.Size() / 1024,
+			CreatedAt: info.ModTime().Format(time.RFC3339),
+		})
+	}
+
+	// Sort newest first
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].CreatedAt > items[j].CreatedAt
+	})
+
+	if items == nil {
+		items = []BackupItem{}
+	}
+
+	return items, nil
+}
+
+// RestoreBackup stops the server if running, safely archives the current
+// world/configs, then extracts the selected backup.
+func RestoreBackup(id string, backupName string) error {
+	inst, err := LoadServer(id)
+	if err != nil {
+		return err
+	}
+
+	// Stop server if running
+	if launcher.IsRunning(id) {
+		launcher.WriteLog(id, "[MACE] Stopping server for backup restore...")
+		StopServer(id)
+		// Wait for shutdown
+		for i := 0; i < 30; i++ {
+			if !launcher.IsRunning(id) {
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		if launcher.IsRunning(id) {
+			return fmt.Errorf("server did not stop in time, cannot restore backup safely")
+		}
+	}
+
+	backupDir := GetBackupDir(inst)
+	zipPath := filepath.Join(backupDir, backupName)
+	if !utils.FileExists(zipPath) {
+		return fmt.Errorf("backup file not found: %s", backupName)
+	}
+
+	// Safety: move current world and configs to a temporary archive
+	timestamp := time.Now().Format("2006-01-02_15-04-05")
+	worldDir := filepath.Join(inst.Path, inst.World)
+	oldWorldDir := filepath.Join(inst.Path, fmt.Sprintf("%s_pre_restore_%s", inst.World, timestamp))
+
+	if _, err := os.Stat(worldDir); err == nil {
+		if err := os.Rename(worldDir, oldWorldDir); err != nil {
+			return fmt.Errorf("failed to archive current world before restore: %w", err)
+		}
+	}
+
+	// Extract the backup zip
+	r, err := zip.OpenReader(zipPath)
+	if err != nil {
+		// Rollback: move old world back
+		if oldWorldDir != "" {
+			os.Rename(oldWorldDir, worldDir)
+		}
+		return fmt.Errorf("failed to open backup archive: %w", err)
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		destPath := filepath.Join(inst.Path, f.Name)
+
+		// Security: prevent zip-slip by ensuring the path stays inside server dir
+		if !strings.HasPrefix(filepath.Clean(destPath), filepath.Clean(inst.Path)+string(os.PathSeparator)) {
+			continue
+		}
+
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(destPath, 0755)
+			continue
+		}
+
+		// Ensure parent directory exists
+		os.MkdirAll(filepath.Dir(destPath), 0755)
+
+		rc, err := f.Open()
+		if err != nil {
+			continue
+		}
+
+		outFile, err := os.Create(destPath)
+		if err != nil {
+			rc.Close()
+			continue
+		}
+
+		io.Copy(outFile, rc)
+		outFile.Close()
+		rc.Close()
+	}
+
+	// Clean up old world archive since restore succeeded
+	os.RemoveAll(oldWorldDir)
+
+	launcher.WriteLog(id, fmt.Sprintf("[MACE] Backup restored successfully: %s", backupName))
+	return nil
+}
+
+// DeleteBackup removes a backup zip file from disk.
+func DeleteBackup(id string, backupName string) error {
+	inst, err := LoadServer(id)
+	if err != nil {
+		return err
+	}
+
+	backupDir := GetBackupDir(inst)
+	zipPath := filepath.Join(backupDir, backupName)
+
+	// Security: ensure path stays inside backup dir
+	rel, err := filepath.Rel(backupDir, zipPath)
+	if err != nil || strings.HasPrefix(rel, "..") || rel == ".." {
+		return fmt.Errorf("invalid backup path")
+	}
+
+	if !utils.FileExists(zipPath) {
+		return fmt.Errorf("backup file not found: %s", backupName)
+	}
+
+	return os.Remove(zipPath)
+}

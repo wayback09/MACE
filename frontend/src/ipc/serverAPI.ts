@@ -1,4 +1,4 @@
-import type { ServerInstance, JavaInstall, ServerType, ContentItem, ModSearchResult, AppSettings } from "./types";
+import type { ServerInstance, JavaInstall, ServerType, ContentItem, ModSearchResult, AppSettings, BackupItem } from "./types";
 
 // Type for the Wails Go App bindings and runtime helper
 declare global {
@@ -12,6 +12,7 @@ declare global {
             version: string;
             type: ServerType;
             memoryMB: number;
+            backupPath?: string;
           }): Promise<ServerInstance>;
           BrowseForServerDir(): Promise<string>;
           ImportServer(payload: { path: string; name: string }): Promise<ServerInstance>;
@@ -30,6 +31,9 @@ declare global {
             port: number;
             watchdog: boolean;
             rawProps: string;
+            version: string;
+            type: string;
+            backupPath: string;
           }): Promise<void>;
           DetectJava(): Promise<JavaInstall[]>;
           GetAvailableVersions(): Promise<Record<string, string[]>>;
@@ -61,6 +65,15 @@ declare global {
           GetAppSettings(): Promise<AppSettings>;
           SaveAppSettings(settings: AppSettings): Promise<void>;
           ValidateCurseForgeKey(apiKey: string): Promise<void>;
+          // Backups
+          ListBackups(id: string): Promise<BackupItem[]>;
+          CreateBackup(id: string): Promise<BackupItem>;
+          RestoreBackup(id: string, backupName: string): Promise<void>;
+          DeleteBackup(id: string, backupName: string): Promise<void>;
+          BrowseForBackupDir(): Promise<string>;
+          // Player Management
+          GetActivePlayers(id: string): Promise<string[]>;
+          GetPlayerRoles(id: string): Promise<{ ops: string[]; whitelisted: string[] }>;
         };
       };
     };
@@ -80,6 +93,7 @@ export async function createServer(payload: {
   version: string;
   type: ServerType;
   memoryMB: number;
+  backupPath?: string;
 }): Promise<ServerInstance> {
   return window.go.main.App.CreateServer(payload);
 }
@@ -130,6 +144,7 @@ export async function updateServerConfig(payload: {
   rawProps: string;
   version: string;
   type: string;
+  backupPath: string;
 }): Promise<{ result: string }> {
   await window.go.main.App.UpdateServerConfig(payload);
   return { result: "updated" };
@@ -270,3 +285,52 @@ export async function validateCurseForgeKey(apiKey: string): Promise<void> {
   return window.go.main.App.ValidateCurseForgeKey(apiKey);
 }
 
+// ---- Backups ----
+
+export async function listBackups(id: string): Promise<BackupItem[]> {
+  return window.go.main.App.ListBackups(id);
+}
+
+export async function createBackup(id: string): Promise<BackupItem> {
+  return window.go.main.App.CreateBackup(id);
+}
+
+export async function restoreBackup(id: string, backupName: string): Promise<void> {
+  return window.go.main.App.RestoreBackup(id, backupName);
+}
+
+export async function deleteBackup(id: string, backupName: string): Promise<void> {
+  return window.go.main.App.DeleteBackup(id, backupName);
+}
+
+export async function browseForBackupDir(): Promise<string> {
+  return window.go.main.App.BrowseForBackupDir();
+}
+
+export function onServerCrashed(callback: (data: { instanceId: string; reason: string; resolution: string }) => void): () => void {
+  if (window.runtime && window.runtime.EventsOn) {
+    return window.runtime.EventsOn("server-crashed", callback);
+  }
+  return () => {};
+}
+
+export async function getActivePlayers(id: string): Promise<string[]> {
+  return window.go.main.App.GetActivePlayers(id);
+}
+
+export async function getPlayerRoles(id: string): Promise<{ ops: string[]; whitelisted: string[] }> {
+  return window.go.main.App.GetPlayerRoles(id);
+}
+
+export function onPlayersUpdated(id: string, callback: (players: string[]) => void): () => void {
+  if (window.runtime && window.runtime.EventsOn) {
+    return window.runtime.EventsOn(`players-updated-${id}`, callback);
+  }
+  return () => {};
+}
+
+export function offPlayersUpdated(id: string): void {
+  if (window.runtime && window.runtime.EventsOff) {
+    window.runtime.EventsOff(`players-updated-${id}`);
+  }
+}

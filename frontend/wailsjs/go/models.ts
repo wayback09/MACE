@@ -109,6 +109,22 @@ export namespace downloader {
 
 export namespace servermanager {
 	
+	export class BackupItem {
+	    fileName: string;
+	    sizeKB: number;
+	    createdAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BackupItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.fileName = source["fileName"];
+	        this.sizeKB = source["sizeKB"];
+	        this.createdAt = source["createdAt"];
+	    }
+	}
 	export class ContentItem {
 	    name: string;
 	    fileName: string;
@@ -134,6 +150,7 @@ export namespace servermanager {
 	    version: string;
 	    type: string;
 	    memoryMB: number;
+	    backupPath: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new CreateServerPayload(source);
@@ -145,6 +162,7 @@ export namespace servermanager {
 	        this.version = source["version"];
 	        this.type = source["type"];
 	        this.memoryMB = source["memoryMB"];
+	        this.backupPath = source["backupPath"];
 	    }
 	}
 	export class ImportServerPayload {
@@ -190,6 +208,7 @@ export namespace servermanager {
 	    ipAddress: string;
 	    port: number;
 	    watchdog: boolean;
+	    backupPath: string;
 	    modpack?: ModpackMeta;
 	
 	    static createFrom(source: any = {}) {
@@ -210,6 +229,7 @@ export namespace servermanager {
 	        this.ipAddress = source["ipAddress"];
 	        this.port = source["port"];
 	        this.watchdog = source["watchdog"];
+	        this.backupPath = source["backupPath"];
 	        this.modpack = this.convertValues(source["modpack"], ModpackMeta);
 	    }
 	
@@ -241,6 +261,7 @@ export namespace servermanager {
 	    rawProps: string;
 	    version: string;
 	    type: string;
+	    backupPath: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateConfigPayload(source);
@@ -257,6 +278,7 @@ export namespace servermanager {
 	        this.rawProps = source["rawProps"];
 	        this.version = source["version"];
 	        this.type = source["type"];
+	        this.backupPath = source["backupPath"];
 	    }
 	}
 
