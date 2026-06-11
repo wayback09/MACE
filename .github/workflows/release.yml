@@ -1,19 +1,125 @@
 name: Build and Release
 
 on:
-  push:
-    tags:
-      - 'v*'
-      - 'alpha-*'
   workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'alpha'
+        type: choice
+        options:
+          - alpha
+          - beta
+          - release
 
 permissions:
   contents: write
 
 jobs:
+  generate-tag:
+    name: Generate Version Tag
+    runs-on: ubuntu-latest
+    outputs:
+      new_tag: ${{ steps.generate.outputs.new_tag }}
+      is_prerelease: ${{ steps.generate.outputs.is_prerelease }}
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all tags
+
+      - name: Generate Next Version Tag
+        id: generate
+        run: |
+          RELEASE_TYPE="${{ github.event.inputs.release_type }}"
+          
+          # Get all existing tags
+          TAGS=$(git tag -l | sort -V)
+          
+          # Find the latest tag of each type
+          LATEST_ALPHA=$(echo "$TAGS" | grep -E '^alpha-v' | tail -1)
+          LATEST_BETA=$(echo "$TAGS" | grep -E '^beta-v' | tail -1)
+          LATEST_RELEASE=$(echo "$TAGS" | grep -E '^v[0-9]+' | grep -v alpha | grep -v beta | tail -1)
+          
+          echo "Latest alpha: $LATEST_ALPHA"
+          echo "Latest beta: $LATEST_BETA"
+          echo "Latest release: $LATEST_RELEASE"
+          
+          # Function to bump version
+          bump_version() {
+            local version=$1
+            local part=$2
+            
+            # Extract version numbers (e.g., v1.0.0 -> 1.0.0)
+            version=${version#*v}
+            
+            IFS='.' read -ra PARTS <<< "$version"
+            MAJOR=${PARTS[0]}
+            MINOR=${PARTS[1]:-0}
+            PATCH=${PARTS[2]:-0}
+            
+            if [ "$part" == "major" ]; then
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+            elif [ "$part" == "minor" ]; then
+              MINOR=$((MINOR + 1))
+              PATCH=0
+            else
+              PATCH=$((PATCH + 1))
+            fi
+            
+            echo "$MAJOR.$MINOR.$PATCH"
+          }
+          
+          if [ "$RELEASE_TYPE" == "alpha" ]; then
+            if [ -z "$LATEST_ALPHA" ]; then
+              # First alpha, start from 1.0.0
+              NEW_VERSION="1.0.0"
+            else
+              # Bump patch version for alpha
+              NEW_VERSION=$(bump_version "$LATEST_ALPHA" "patch")
+            fi
+            NEW_TAG="alpha-v$NEW_VERSION"
+            IS_PRERELEASE="true"
+            
+          elif [ "$RELEASE_TYPE" == "beta" ]; then
+            if [ -z "$LATEST_BETA" ]; then
+              # Transitioning from alpha to beta - use last alpha's base version
+              if [ -n "$LATEST_ALPHA" ]; then
+                NEW_VERSION=$(bump_version "$LATEST_ALPHA" "patch")
+              else
+                NEW_VERSION="1.0.0"
+              fi
+            else
+              # Bump patch version for beta
+              NEW_VERSION=$(bump_version "$LATEST_BETA" "patch")
+            fi
+            NEW_TAG="beta-v$NEW_VERSION"
+            IS_PRERELEASE="true"
+            
+          else  # release
+            if [ -z "$LATEST_RELEASE" ]; then
+              # First release, use 1.0.0
+              NEW_VERSION="1.0.0"
+            else
+              # Bump patch version for release
+              NEW_VERSION=$(bump_version "$LATEST_RELEASE" "patch")
+            fi
+            NEW_TAG="v$NEW_VERSION"
+            IS_PRERELEASE="false"
+          fi
+          
+          echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+          echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+          echo "Generated tag: $NEW_TAG (prerelease: $IS_PRERELEASE)"
+
   build:
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    needs: generate-tag
     strategy:
       matrix:
         include:
@@ -73,12 +179,14 @@ jobs:
           retention-days: 1
 
   release:
-    name: Create Release
+    name: Create Release and Tag
     runs-on: ubuntu-latest
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/')
+    needs: [generate-tag, build]
 
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Download All Artifacts
         uses: actions/download-artifact@v4
         with:
@@ -92,7 +200,23 @@ jobs:
           mv artifacts/mace-linux-amd64/mace-linux-amd64 release/ || true
           ls -la release/
 
+      - name: Create Git Tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag ${{ needs.generate-tag.outputs.new_tag }}
+          git push origin ${{ needs.generate-tag.outputs.new_tag }}
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.generate-tag.outputs.new_tag }}
           files: release/*
+          prerelease: ${{ needs.generate-tag.outputs.is_prerelease }}
+          body: |
+            Release: ${{ needs.generate-tag.outputs.new_tag }}
+            
+            ### Artifacts
+            - Windows: `mace-windows-amd64.exe`
+            - macOS: `mace-macos-universal.zip`
+            - Linux: `mace-linux-amd64`
