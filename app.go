@@ -32,6 +32,16 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	servermanager.CrashCallback = func(instanceID, reason, resolution string) {
+		runtime.EventsEmit(a.ctx, "server-crashed", map[string]string{
+			"instanceId": instanceID,
+			"reason":     reason,
+			"resolution": resolution,
+		})
+	}
+	launcher.PlayerUpdateCallback = func(id string, players []string) {
+		runtime.EventsEmit(a.ctx, "players-updated-"+id, players)
+	}
 }
 
 // domReady is called when the DOM is fully loaded
@@ -201,6 +211,38 @@ func (a *App) UnsubscribeConsole(id string) {
 		delete(a.doneChannels, id)
 	}
 	a.mu.Unlock()
+}
+
+// GetActivePlayers returns the active player names for a server instance.
+func (a *App) GetActivePlayers(id string) ([]string, error) {
+	if !launcher.IsRunning(id) {
+		launcher.ClearActivePlayers(id)
+		return []string{}, nil
+	}
+	players := launcher.GetActivePlayers(id)
+	// Fallback: if the server is running but the player list is empty, seed from console buffer
+	if len(players) == 0 {
+		logs, _ := servermanager.GetConsoleLogs(id)
+		launcher.SeedActivePlayersFromLogs(id, logs)
+		players = launcher.GetActivePlayers(id)
+	}
+	return players, nil
+}
+
+// GetPlayerRoles returns the OP and Whitelist status lists.
+func (a *App) GetPlayerRoles(id string) (map[string]interface{}, error) {
+	inst, err := servermanager.LoadServer(id)
+	if err != nil {
+		return nil, err
+	}
+	roles, err := launcher.GetPlayerRoles(inst.Path)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{
+		"ops":         roles.Ops,
+		"whitelisted": roles.Whitelisted,
+	}, nil
 }
 
 // --- Content Management (Mods / Plugins / Modpacks) ---
@@ -397,3 +439,31 @@ func (a *App) ValidateCurseForgeKey(apiKey string) error {
 	return downloader.ValidateCurseForgeKey(apiKey)
 }
 
+// --- Backups ---
+
+// ListBackups returns all backup archives for a server instance.
+func (a *App) ListBackups(id string) ([]servermanager.BackupItem, error) {
+	return servermanager.ListBackups(id)
+}
+
+// CreateBackup compresses the world folder and configs into a timestamped zip.
+func (a *App) CreateBackup(id string) (*servermanager.BackupItem, error) {
+	return servermanager.CreateBackup(id)
+}
+
+// RestoreBackup restores a server from a backup archive.
+func (a *App) RestoreBackup(id string, backupName string) error {
+	return servermanager.RestoreBackup(id, backupName)
+}
+
+// DeleteBackup removes a backup archive from disk.
+func (a *App) DeleteBackup(id string, backupName string) error {
+	return servermanager.DeleteBackup(id, backupName)
+}
+
+// BrowseForBackupDir opens a native folder selection dialog for choosing a backup directory.
+func (a *App) BrowseForBackupDir() (string, error) {
+	return runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select Backup Directory",
+	})
+}

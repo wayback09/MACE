@@ -59,6 +59,9 @@ func WriteLog(id string, text string) {
 
 		// Broadcast to listeners
 		broadcastLog(id, trimmed)
+
+		// Parse for player joins/leaves
+		ParseLogLineForPlayers(id, trimmed)
 	}
 	buf.mu.Unlock()
 }
@@ -80,6 +83,7 @@ func ClearLogs(id string) {
 	buf.mu.Lock()
 	buf.Lines = make([]string, 0, 500)
 	buf.mu.Unlock()
+	ClearActivePlayers(id)
 }
 
 // RegisterStdin stores the process's standard input pipe.

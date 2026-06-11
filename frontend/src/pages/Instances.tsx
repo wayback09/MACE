@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import type { ServerInstance } from "../ipc/types";
-import { Terminal, Settings, Trash2, Cpu, FolderClosed, Puzzle } from "lucide-react";
+import { Terminal, Settings, Trash2, Cpu, FolderClosed, Puzzle, Archive, Users } from "lucide-react";
 import Console from "../components/Console";
 import ConfigEditor from "../components/ConfigEditor";
 import ResourceMonitor from "../components/ResourceMonitor";
 import InstanceContentManager from "../components/ContentManager";
+import BackupManager from "../components/BackupManager";
+import PlayerManager from "../components/PlayerManager";
 import { deleteServer, startServer, stopServer, restartServer } from "../ipc/serverAPI";
 
 interface InstancesProps {
@@ -18,7 +20,7 @@ export default function Instances({ servers, refreshServers, initialSelectedId, 
   const [selectedServerId, setSelectedServerId] = useState<string>(
     initialSelectedId || (servers.length > 0 ? servers[0].id : "")
   );
-  const [activeTab, setActiveTab] = useState<"terminal" | "config" | "mods">("terminal");
+  const [activeTab, setActiveTab] = useState<"terminal" | "players" | "config" | "mods" | "backups">("terminal");
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [serverActionLoading, setServerActionLoading] = useState(false);
 
@@ -211,6 +213,13 @@ export default function Instances({ servers, refreshServers, initialSelectedId, 
                 <Terminal size={16} /> Console
               </button>
               <button
+                onClick={() => setActiveTab("players")}
+                className={activeTab === "players" ? "button-primary" : "button-normal"}
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: 0 }}
+              >
+                <Users size={16} /> Players
+              </button>
+              <button
                 onClick={() => setActiveTab("config")}
                 className={activeTab === "config" ? "button-primary" : "button-normal"}
                 style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: 0 }}
@@ -223,6 +232,13 @@ export default function Instances({ servers, refreshServers, initialSelectedId, 
                 style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: 0 }}
               >
                 <Puzzle size={16} /> Mods & Plugins
+              </button>
+              <button
+                onClick={() => setActiveTab("backups")}
+                className={activeTab === "backups" ? "button-primary" : "button-normal"}
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: 0 }}
+              >
+                <Archive size={16} /> Backups
               </button>
               <button
                 onClick={handleDelete}
@@ -245,8 +261,12 @@ export default function Instances({ servers, refreshServers, initialSelectedId, 
           {/* Tab Content */}
           {activeTab === "terminal" ? (
             <Console key={selectedServer.id} serverId={selectedServer.id} serverName={selectedServer.name} />
+          ) : activeTab === "players" ? (
+            <PlayerManager key={selectedServer.id} serverId={selectedServer.id} serverStatus={selectedServer.status} />
           ) : activeTab === "mods" ? (
             <InstanceContentManager key={selectedServer.id} server={selectedServer} />
+          ) : activeTab === "backups" ? (
+            <BackupManager key={selectedServer.id} serverId={selectedServer.id} serverName={selectedServer.name} backupPath={selectedServer.backupPath || ""} />
           ) : (
             <ConfigEditor key={selectedServer.id} server={selectedServer} refreshServers={refreshServers} />
           )}

@@ -25,6 +25,7 @@ type ServerInstance struct {
 	IPAddress  string       `json:"ipAddress"`
 	Port       int          `json:"port"`
 	Watchdog   bool         `json:"watchdog"`
+	BackupPath string       `json:"backupPath"`
 	Modpack    *ModpackMeta `json:"modpack,omitempty"`
 }
 
@@ -60,10 +61,11 @@ type ModSearchResult struct {
 }
 
 type CreateServerPayload struct {
-	Name     string `json:"name"`
-	Version  string `json:"version"`
-	Type     string `json:"type"`
-	MemoryMB int    `json:"memoryMB"`
+	Name       string `json:"name"`
+	Version    string `json:"version"`
+	Type       string `json:"type"`
+	MemoryMB   int    `json:"memoryMB"`
+	BackupPath string `json:"backupPath"`
 }
 
 type ImportServerPayload struct {
@@ -73,13 +75,21 @@ type ImportServerPayload struct {
 
 
 type UpdateConfigPayload struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	JavaPath  string `json:"javaPath"`
-	MemoryMB  int    `json:"memoryMB"`
-	Port      int    `json:"port"`
-	Watchdog  bool   `json:"watchdog"`
-	RawProps  string `json:"rawProps"` // For raw server.properties editing
-	Version   string `json:"version"`
-	Type      string `json:"type"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	JavaPath   string `json:"javaPath"`
+	MemoryMB   int    `json:"memoryMB"`
+	Port       int    `json:"port"`
+	Watchdog   bool   `json:"watchdog"`
+	RawProps   string `json:"rawProps"` // For raw server.properties editing
+	Version    string `json:"version"`
+	Type       string `json:"type"`
+	BackupPath string `json:"backupPath"`
+}
+
+// BackupItem represents a single backup archive.
+type BackupItem struct {
+	FileName  string `json:"fileName"`
+	SizeKB    int64  `json:"sizeKB"`
+	CreatedAt string `json:"createdAt"`
 }

@@ -19,6 +19,7 @@ export interface ServerInstance {
   ipAddress: string;
   port: number;
   watchdog: boolean;
+  backupPath: string;
   modpack?: ModpackMeta;
 }
 
@@ -50,4 +51,10 @@ export interface ModSearchResult {
 
 export interface AppSettings {
   curseForgeApiKey: string;
+}
+
+export interface BackupItem {
+  fileName: string;
+  sizeKB: number;
+  createdAt: string;
 }

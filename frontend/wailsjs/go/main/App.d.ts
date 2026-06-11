@@ -10,6 +10,8 @@ export function ApplyModpack(arg1:string,arg2:string):Promise<servermanager.Modp
 
 export function BrowseCurseForge(arg1:number,arg2:string,arg3:string):Promise<Array<downloader.CurseForgeSearchResult>>;
 
+export function BrowseForBackupDir():Promise<string>;
+
 export function BrowseForJar():Promise<string>;
 
 export function BrowseForModpackZip():Promise<string>;
@@ -22,17 +24,25 @@ export function BrowseModrinth(arg1:string,arg2:string,arg3:string):Promise<Arra
 
 export function BrowseSpiget():Promise<Array<downloader.SpigetSearchResult>>;
 
+export function CreateBackup(arg1:string):Promise<servermanager.BackupItem>;
+
 export function CreateServer(arg1:servermanager.CreateServerPayload):Promise<servermanager.ServerInstance>;
+
+export function DeleteBackup(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteServer(arg1:string):Promise<void>;
 
 export function DetectJava():Promise<Array<utils.JavaInstall>>;
+
+export function GetActivePlayers(arg1:string):Promise<Array<string>>;
 
 export function GetAppSettings():Promise<utils.AppSettings>;
 
 export function GetAvailableVersions():Promise<Record<string, Array<string>>>;
 
 export function GetConsoleLogs(arg1:string):Promise<Array<string>>;
+
+export function GetPlayerRoles(arg1:string):Promise<Record<string, any>>;
 
 export function GetServerProperties(arg1:string):Promise<string>;
 
@@ -48,6 +58,8 @@ export function InstallModrinthMod(arg1:string,arg2:string,arg3:string,arg4:stri
 
 export function InstallSpigetPlugin(arg1:string,arg2:number):Promise<servermanager.ContentItem>;
 
+export function ListBackups(arg1:string):Promise<Array<servermanager.BackupItem>>;
+
 export function ListContent(arg1:string,arg2:string):Promise<Array<servermanager.ContentItem>>;
 
 export function ListServers():Promise<Array<servermanager.ServerInstance>>;
@@ -55,6 +67,8 @@ export function ListServers():Promise<Array<servermanager.ServerInstance>>;
 export function RemoveContent(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function RestartServer(arg1:string):Promise<void>;
+
+export function RestoreBackup(arg1:string,arg2:string):Promise<void>;
 
 export function SaveAppSettings(arg1:utils.AppSettings):Promise<void>;
 

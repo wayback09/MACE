@@ -6,8 +6,9 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
+
+	"mace/backend/pkg/utils"
 )
 
 // ResourceUsage holds live resource metrics for a running server process.
@@ -24,12 +25,7 @@ var (
 // hiddenCmd creates an exec.Cmd that won't show a console window on Windows.
 func hiddenCmd(name string, args ...string) *exec.Cmd {
 	cmd := exec.Command(name, args...)
-	if runtime.GOOS == "windows" {
-		cmd.SysProcAttr = &syscall.SysProcAttr{
-			HideWindow:    true,
-			CreationFlags: 0x08000000, // CREATE_NO_WINDOW
-		}
-	}
+	utils.HideWindow(cmd)
 	return cmd
 }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { createServer, getAvailableVersions } from "../ipc/serverAPI";
-import { Download, ShieldAlert, Cpu } from "lucide-react";
+import { createServer, getAvailableVersions, browseForBackupDir } from "../ipc/serverAPI";
+import { Download, ShieldAlert, Cpu, FolderOpen } from "lucide-react";
 import type { ServerType } from "../ipc/types";
 
 interface CreateServerProps {
@@ -13,6 +13,7 @@ export default function CreateServer({ refreshServers, setActiveTab }: CreateSer
   const [type, setType] = useState("vanilla");
   const [version, setVersion] = useState("");
   const [memoryMB, setMemoryMB] = useState(2048);
+  const [backupPath, setBackupPath] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetchingVersions, setFetchingVersions] = useState(true);
   const [error, setError] = useState("");
@@ -55,7 +56,7 @@ export default function CreateServer({ refreshServers, setActiveTab }: CreateSer
     setLoading(true);
     setError("");
     try {
-      await createServer({ name, type: type as ServerType, version, memoryMB: Number(memoryMB) });
+      await createServer({ name, type: type as ServerType, version, memoryMB: Number(memoryMB), backupPath });
       refreshServers();
       setActiveTab("instances");
     } catch (err: any) {
@@ -213,6 +214,40 @@ export default function CreateServer({ refreshServers, setActiveTab }: CreateSer
           >
             <Cpu size={14} />
             <span>Recommended RAM: 2048 MB for Vanilla, 4096 MB for Forge/Fabric with mods.</span>
+          </div>
+
+          {/* Backup Directory */}
+          <div className="form-group">
+            <label className="form-label">Backup Directory (Optional)</label>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <input
+                className="form-input"
+                type="text"
+                value={backupPath}
+                onChange={(e) => setBackupPath(e.target.value)}
+                placeholder="Default: server/backups/"
+                style={{ flex: 1 }}
+              />
+              <button
+                type="button"
+                className="button-normal"
+                onClick={async () => {
+                  try {
+                    const dir = await browseForBackupDir();
+                    if (dir) setBackupPath(dir);
+                  } catch (err) {
+                    console.error("Failed to select backup directory:", err);
+                    setError("Failed to open directory picker.");
+                  }
+                }}
+                style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.4rem", whiteSpace: "nowrap" }}
+              >
+                <FolderOpen size={14} /> Browse
+              </button>
+            </div>
+            <p style={{ fontSize: "0.75rem", color: "var(--accent-color)", marginTop: "0.4rem", opacity: 0.7 }}>
+              Tip: Placing backups on a separate drive or dedicated folder helps prevent accidental deletion.
+            </p>
           </div>
 
           {/* Submit */}
